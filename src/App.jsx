@@ -2,6 +2,7 @@ import "./App.css";
 import React,{useState,useCallback,useRef,useEffect} from "react";
 import{dbSync,dbLoad}from'./supabase.js';
 const SUPABASE_TABLES={'hm_teachers6':'teachers','hm_classes6':'classes','hm_students6':'students','hm_income6':'income','hm_expenses6':'expenses','hm_attendance6':'attendance','hm_notices6':'notices','hm_videos6':'videos','hm_tuitions6':'tuitions','hm_consultations6':'consultations','hm_events6':'events','hm_makeups6':'makeups','hm_withdrawals6':'withdrawals','hm_achievements6':'achievements'};
+const isBlank=new URLSearchParams(window.location.search).get('blank')==='true';
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
 const copyToClipboard=(text,msg='링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.')=>{
@@ -8158,8 +8159,8 @@ achievements:[
 };
 
 function useLS(key,init){
-  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
-  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);localStorage.setItem(key,JSON.stringify(next));const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);},[key,val]);
+  const[val,setVal]=useState(()=>{if(isBlank)return init;try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
+  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);if(!isBlank){localStorage.setItem(key,JSON.stringify(next));const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);}},[key,val]);
   return[val,update];
 }
 
@@ -13846,6 +13847,7 @@ export default function App(){
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
   // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
   useEffect(()=>{
+    if(isBlank){console.log('[Blank 모드] Supabase 동기화 스킵 — 빈 상태로 시작');return;}
     (async()=>{
       try{
         const td=await dbLoad('teachers');
