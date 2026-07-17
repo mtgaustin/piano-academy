@@ -8159,7 +8159,7 @@ achievements:[
 };
 
 function useLS(key,init){
-  const[val,setVal]=useState(()=>{if(isBlank)return init;try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
+  const[val,setVal]=useState(()=>{if(isBlank)return Array.isArray(init)?[]:init;try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
   const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);if(!isBlank){localStorage.setItem(key,JSON.stringify(next));const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);}},[key,val]);
   return[val,update];
 }
