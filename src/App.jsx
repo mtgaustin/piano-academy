@@ -3,6 +3,7 @@ import React,{useState,useCallback,useRef,useEffect} from "react";
 import{dbSync,dbLoad}from'./supabase.js';
 const SUPABASE_TABLES={'hm_teachers6':'teachers','hm_classes6':'classes','hm_students6':'students','hm_income6':'income','hm_expenses6':'expenses','hm_attendance6':'attendance','hm_notices6':'notices','hm_videos6':'videos','hm_tuitions6':'tuitions','hm_consultations6':'consultations','hm_events6':'events','hm_makeups6':'makeups','hm_withdrawals6':'withdrawals','hm_achievements6':'achievements'};
 const isBlank=new URLSearchParams(window.location.search).get('blank')==='true';
+const DEFAULT_SUBJECTS=['유아·초급 과정','중급 과정 (체르니30·소나티네)','고급 과정 (소나타·인벤션)','콩쿠르·입시 과정','성인·청소년 과정','음악이론·시창 과정'];
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
 const copyToClipboard=(text,msg='링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.')=>{
@@ -8159,8 +8160,8 @@ achievements:[
 };
 
 function useLS(key,init){
-  const[val,setVal]=useState(()=>{if(isBlank)return Array.isArray(init)?[]:init;try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
-  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);if(!isBlank){localStorage.setItem(key,JSON.stringify(next));const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);}},[key,val]);
+  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);if(s)return JSON.parse(s);return isBlank&&Array.isArray(init)?[]:init;}catch{return isBlank&&Array.isArray(init)?[]:init;}});
+  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);localStorage.setItem(key,JSON.stringify(next));if(!isBlank){const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);}},[key,val]);
   return[val,update];
 }
 
@@ -8666,7 +8667,7 @@ function Dashboard({teachers,students,classes,income,expenses,tuitions,attendanc
 }
 
 // ── 강사 관리 (학력 추가) ────────────────────────────────────────────────────
-function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,setAttendance}){
+function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,setAttendance,courseTypes,setCourseTypes}){
   const[modalOpen,setModalOpen]=useState(false);
   const[editTarget,setEditTarget]=useState(null);
   const[confirmId,setConfirmId]=useState(null);
@@ -8688,7 +8689,19 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
   const emptyCareer={org:'',role:'',startDate:'',endDate:''};
   const[careerForm,setCareerForm]=useState(emptyCareer);
   const MAX_FILE_SIZE=5*1024*1024;
-  const subjectOptions=['유아·초급 과정','중급 과정 (체르니30·소나티네)','고급 과정 (소나타·인벤션)','콩쿠르·입시 과정','성인·청소년 과정','음악이론·시창 과정'];
+  const subjectOptions=courseTypes||DEFAULT_SUBJECTS;
+  const[newSubjectInput,setNewSubjectInput]=useState('');
+  const addSubjectOption=()=>{
+    const v=newSubjectInput.trim();
+    if(!v)return;
+    if(subjectOptions.includes(v)){alert('이미 존재하는 과정입니다.');return;}
+    setCourseTypes([...subjectOptions,v]);
+    setNewSubjectInput('');
+  };
+  const delSubjectOption=s=>{
+    if(!confirm(`'${s}' 과정을 목록에서 삭제하시겠습니까?\n(이미 배정된 강사의 데이터는 유지됩니다)`))return;
+    setCourseTypes(subjectOptions.filter(x=>x!==s));
+  };
   const setEdu=k=>e=>setForm(f=>({...f,edu:{...f.edu,[k]:e.target.value}}));
   const toggleSubject=s=>setForm(f=>({...f,subjects:(f.subjects||[]).includes(s)?f.subjects.filter(x=>x!==s):[...(f.subjects||[]),s]}));
   const openAdd=()=>{setEditTarget(null);setForm({...emptyForm,contractStart:today()});setCareerForm(emptyCareer);setModalOpen(true);};
@@ -8912,12 +8925,20 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
         <Field label="상태"><select className={inp} value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="active">활동중</option><option value="inactive">비활동</option></select></Field>
       </div>
       <Field label="담당 과정 (복수 선택 가능)" required>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-2">
           {subjectOptions.map(s=>{
             const checked=(form.subjects||[]).includes(s);
-            return<button key={s} type="button" onClick={()=>toggleSubject(s)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${checked?'bg-[#1e3a5f] text-white border-[#1e3a5f]':'bg-white text-slate-700 border-gray-300 hover:border-[#3b82f6]'}`}>{s}</button>;
+            return<div key={s} className="flex items-center gap-0.5">
+              <button type="button" onClick={()=>toggleSubject(s)}
+                className={`text-xs px-3 py-1.5 rounded-l-full border font-medium transition-colors ${checked?'bg-[#1e3a5f] text-white border-[#1e3a5f]':'bg-white text-slate-700 border-gray-300 hover:border-[#3b82f6]'}`}>{s}</button>
+              <button type="button" onClick={()=>delSubjectOption(s)}
+                className="text-xs px-1.5 py-1.5 rounded-r-full border border-l-0 text-red-400 hover:bg-red-50 border-gray-300 font-bold leading-none">×</button>
+            </div>;
           })}
+        </div>
+        <div className="flex gap-2 mt-1">
+          <input className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs flex-1 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="새 과정 이름 입력 (예: 입시 특별반)" value={newSubjectInput} onChange={e=>setNewSubjectInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addSubjectOption();}}}/>
+          <button type="button" onClick={addSubjectOption} className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 font-medium">+ 과정 추가</button>
         </div>
       </Field>
       <div className="border-t border-gray-100 pt-4 mt-2">
@@ -13845,6 +13866,7 @@ export default function App(){
   const[role,setRole]=useState(null);
   const[loggedInTeacherId,setLoggedInTeacherId]=useState(null);
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
+  const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
   // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
   useEffect(()=>{
     if(isBlank){console.log('[Blank 모드] Supabase 동기화 스킵 — 빈 상태로 시작');return;}
@@ -13991,7 +14013,7 @@ export default function App(){
       </div>
       <main className="flex-1 p-6 overflow-y-auto" style={{background:'#f8fafc'}}>
         {page==='dashboard'&&<Dashboard teachers={teachers} students={students} classes={classes} income={income} expenses={expenses} tuitions={tuitions} attendance={attendance} consultations={consultations} setPage={setPage} setAttContext={setAttContext} setConsultContext={setConsultContext} role={role} loggedInTeacherId={loggedInTeacherId}/>}
-        {page==='teachers'&&<TeacherManagement teachers={teachers} setTeachers={setTeachers} classes={classes} setClasses={setClasses} attendance={attendance} setAttendance={setAttendance}/>}
+        {page==='teachers'&&<TeacherManagement teachers={teachers} setTeachers={setTeachers} classes={classes} setClasses={setClasses} attendance={attendance} setAttendance={setAttendance} courseTypes={courseTypes} setCourseTypes={setCourseTypes}/>}
         {page==='classes'&&<ClassManagement classes={classes} setClasses={setClasses} teachers={teachers} students={students} role={role}/>}
         {page==='students'&&<StudentManagement students={students} setStudents={setStudents} classes={classes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} tuitions={tuitions} setTuitions={setTuitions} role={role} loggedInTeacherId={loggedInTeacherId} tuitionDaySetting={tuitionDaySetting}/>}
         {page==='expense_submit'&&<ExpenseSubmit expenses={expenses} setExpenses={setExpenses} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
