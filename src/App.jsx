@@ -13986,7 +13986,7 @@ export default function App(){
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${role==='director'?'bg-[#1e3a5f] text-white':'bg-blue-100 text-blue-700'}`}>{role==='director'?'🏫 원장':`👨‍🏫 ${loggedInTeacherId?(teachers.find(t=>t.id===loggedInTeacherId)?.name||'강사'):'강사'}`}</span>
           <span className="text-xs text-slate-700 font-semibold">{(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})()}</span>
           {role==='director'&&<button onClick={()=>setPinModalOpen(true)} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">🔐 계정 변경</button>}
-          {role==='director'&&<button onClick={reset} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">데이터 초기화</button>}
+          {role==='director'&&!isBlank&&<button onClick={reset} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">데이터 초기화</button>}
         </div>
       </div>
       <main className="flex-1 p-6 overflow-y-auto" style={{background:'#f8fafc'}}>
