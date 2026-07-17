@@ -1,5 +1,7 @@
 import "./App.css";
 import React,{useState,useCallback,useRef,useEffect} from "react";
+import{dbSync,dbLoad}from'./supabase.js';
+const SUPABASE_TABLES={'hm_teachers6':'teachers','hm_classes6':'classes','hm_students6':'students','hm_income6':'income','hm_expenses6':'expenses','hm_attendance6':'attendance','hm_notices6':'notices','hm_videos6':'videos','hm_tuitions6':'tuitions','hm_consultations6':'consultations','hm_events6':'events','hm_makeups6':'makeups','hm_withdrawals6':'withdrawals','hm_achievements6':'achievements'};
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
 const copyToClipboard=(text,msg='링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.')=>{
@@ -8157,7 +8159,7 @@ achievements:[
 
 function useLS(key,init){
   const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):init;}catch{return init;}});
-  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);localStorage.setItem(key,JSON.stringify(next));},[key,val]);
+  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);localStorage.setItem(key,JSON.stringify(next));const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);},[key,val]);
   return[val,update];
 }
 
@@ -13842,6 +13844,52 @@ export default function App(){
   const[role,setRole]=useState(null);
   const[loggedInTeacherId,setLoggedInTeacherId]=useState(null);
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
+  // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const td=await dbLoad('teachers');
+        if(td===null){console.warn('[Supabase] 연결 실패 — 로컬 데이터로 계속합니다');return;}
+        if(td.length===0){
+          // DB가 비어 있음 → 현재 로컬 데이터를 DB에 씀 (최초 1회)
+          console.log('[Supabase] DB 초기 저장 중...');
+          await Promise.all([
+            dbSync('teachers',teachers),dbSync('classes',classes),dbSync('students',students),
+            dbSync('income',income),dbSync('expenses',expenses),dbSync('attendance',attendance),
+            dbSync('notices',notices),dbSync('videos',videos),dbSync('tuitions',tuitions),
+            dbSync('consultations',consultations),dbSync('events',events),dbSync('makeups',makeups),
+            dbSync('withdrawals',withdrawals),dbSync('achievements',achievements),
+          ]);
+          console.log('[Supabase] ✅ 초기 저장 완료');
+        }else{
+          // DB에 데이터 있음 → 불러와서 앱 상태 교체
+          console.log('[Supabase] DB에서 데이터 로드 중...');
+          const[cl,st,inc,exp,att,not,vid,tui,con,evt,mk,wd,ach]=await Promise.all([
+            dbLoad('classes'),dbLoad('students'),dbLoad('income'),dbLoad('expenses'),
+            dbLoad('attendance'),dbLoad('notices'),dbLoad('videos'),dbLoad('tuitions'),
+            dbLoad('consultations'),dbLoad('events'),dbLoad('makeups'),dbLoad('withdrawals'),
+            dbLoad('achievements'),
+          ]);
+          setTeachers(td);
+          if(cl&&cl.length)setClasses(cl);
+          if(st&&st.length)setStudents(st);
+          if(inc&&inc.length)setIncome(inc);
+          if(exp&&exp.length)setExpenses(exp);
+          if(att&&att.length)setAttendance(att);
+          if(not&&not.length)setNotices(not);
+          if(vid&&vid.length)setVideos(vid);
+          if(tui&&tui.length)setTuitions(tui);
+          if(con&&con.length)setConsultations(con);
+          if(evt&&evt.length)setEvents(evt);
+          if(mk&&mk.length)setMakeups(mk);
+          if(wd&&wd.length)setWithdrawals(wd);
+          if(ach&&ach.length)setAchievements(ach);
+          console.log('[Supabase] ✅ 로드 완료 - 강사:',td.length,'학생:',st?.length);
+        }
+      }catch(e){console.error('[Supabase] 초기화 오류:',e.message);}
+    })();
+  },[]);
+  // ──────────────────────────────────────────────────────────────────────────
   const[pinModalOpen,setPinModalOpen]=useState(false);
   const[mobileOpen,setMobileOpen]=useState(false);
   // 대시보드 → 상세 페이지 연동 컨텍스트
