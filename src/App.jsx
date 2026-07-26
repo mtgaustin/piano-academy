@@ -1,9 +1,18 @@
 import "./App.css";
 import React,{useState,useCallback,useRef,useEffect} from "react";
-import{dbSync,dbLoad}from'./supabase.js';
+import{dbSync,dbLoad,setAcademyId}from'./supabase.js';
 const SUPABASE_TABLES={'hm_teachers6':'teachers','hm_classes6':'classes','hm_students6':'students','hm_income6':'income','hm_expenses6':'expenses','hm_attendance6':'attendance','hm_notices6':'notices','hm_videos6':'videos','hm_tuitions6':'tuitions','hm_consultations6':'consultations','hm_events6':'events','hm_makeups6':'makeups','hm_withdrawals6':'withdrawals','hm_achievements6':'achievements'};
 const isBlank=new URLSearchParams(window.location.search).get('blank')==='true';
+const BLANK_TYPE=new URLSearchParams(window.location.search).get('type')||'';
 const DEFAULT_SUBJECTS=['유아·초급 과정','중급 과정 (체르니30·소나티네)','고급 과정 (소나타·인벤션)','콩쿠르·입시 과정','성인·청소년 과정','음악이론·시창 과정'];
+const BLANK_TYPE_SUBJECTS={
+  piano:['유아·초급 과정','중급 과정 (체르니30·소나티네)','고급 과정 (소나타·인벤션)','콩쿠르·입시 과정','성인·청소년 과정','음악이론·시창 과정'],
+  math:['초등수학','중등수학','고등수학 일반','수능수학','내신대비반','심화반'],
+  english:['파닉스·입문','초등영어','중등영문법','고등영어','수능영어','회화반'],
+  korean:['독서논술','초등국어','중등국어','고등국어','수능국어','논술반'],
+  taekwondo:['유아부','초등부','중·고등부','성인부','선수반','품새반'],
+  art:['유아미술','초등미술','중등미술','입시미술','성인미술','디자인반'],
+};
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
 const copyToClipboard=(text,msg='링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.')=>{
@@ -13265,6 +13274,45 @@ function ExpenseSubmit({expenses,setExpenses,teachers,role,loggedInTeacherId}){
 // 강사 역할에서 숨길 페이지 ID 목록
 const TEACHER_HIDDEN=['teachers','tuition','payslip','budget','tax','parent_portal','withdrawal','settings'];
 
+function TypeSelectScreen({onSelect}){
+  const types=[
+    {key:'piano', icon:'🎹', label:'피아노·음악'},
+    {key:'math',  icon:'📐', label:'수학'},
+    {key:'english',icon:'🔤', label:'영어'},
+    {key:'korean', icon:'📖', label:'국어·논술'},
+    {key:'taekwondo',icon:'🥋',label:'태권도·무도'},
+    {key:'art',   icon:'🎨', label:'미술'},
+  ];
+  useEffect(()=>{
+    if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])onSelect(BLANK_TYPE);
+  },[]);
+  if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])return null;
+  return<div style={{minHeight:'100vh',background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
+    <div style={{width:'100%',maxWidth:'480px'}}>
+      <div style={{textAlign:'center',marginBottom:'32px'}}>
+        <div style={{fontSize:'40px',marginBottom:'12px'}}>🏫</div>
+        <h1 style={{fontSize:'22px',fontWeight:'800',color:'#1e293b',margin:'0 0 8px'}}>학원 유형을 선택하세요</h1>
+        <p style={{fontSize:'14px',color:'#64748b',margin:0}}>선택한 유형에 맞게 과정·수업 기본값이 자동 설정됩니다</p>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'16px'}}>
+        {types.map(t=><button key={t.key} onClick={()=>onSelect(t.key)}
+          style={{padding:'20px 16px',background:'white',border:'2px solid #e2e8f0',borderRadius:'16px',cursor:'pointer',textAlign:'center',transition:'all 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor='#1e3a5f';e.currentTarget.style.boxShadow='0 4px 12px rgba(30,58,95,0.15)';}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';}}>
+          <div style={{fontSize:'28px',marginBottom:'6px'}}>{t.icon}</div>
+          <div style={{fontSize:'14px',fontWeight:'700',color:'#1e293b'}}>{t.label}</div>
+        </button>)}
+      </div>
+      <button onClick={()=>onSelect('custom')}
+        style={{width:'100%',padding:'14px',background:'white',border:'2px dashed #cbd5e1',borderRadius:'12px',cursor:'pointer',fontSize:'14px',color:'#64748b',fontWeight:'600',transition:'all 0.15s'}}
+        onMouseEnter={e=>{e.currentTarget.style.borderColor='#94a3b8';e.currentTarget.style.color='#475569';}}
+        onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#64748b';}}>
+        ✏️ &nbsp;기타 (직접 설정)
+      </button>
+      <p style={{textAlign:'center',fontSize:'12px',color:'#94a3b8',marginTop:'20px'}}>과정·수업명은 나중에 언제든지 변경할 수 있습니다</p>
+    </div>
+  </div>;
+}
 function LoginScreen({onLogin,academyName,accounts,teachers}){
   const[step,setStep]=useState('role');
   const[role,setRole]=useState(null);
@@ -13867,6 +13915,13 @@ export default function App(){
   const[loggedInTeacherId,setLoggedInTeacherId]=useState(null);
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
+  // ── Academy ID 초기화 (다중 학원 데이터 분리) ──────────────────────────────
+  // 최초 실행 시 UUID 생성 → 이후 모든 Supabase 쿼리는 이 ID로 필터링됨
+  useEffect(()=>{
+    const id=accounts.academyId||crypto.randomUUID();
+    if(!accounts.academyId)setAccounts(prev=>({...prev,academyId:id}));
+    setAcademyId(id);
+  },[]);
   // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
   useEffect(()=>{
     if(isBlank){console.log('[Blank 모드] Supabase 동기화 스킵 — 빈 상태로 시작');return;}
@@ -13990,6 +14045,11 @@ export default function App(){
     setLastAutoGenMonth(curM);
   },[role]);
   // 로그인 화면 — useEffect 포함 모든 훅 호출 후에 조건부 렌더링 (React 훅 규칙 준수)
+  // blank 모드: 학원 유형 미선택 시 유형 선택 화면 먼저 표시
+  if(isBlank&&courseTypes.length===0)return<TypeSelectScreen onSelect={type=>{
+    const subjects=BLANK_TYPE_SUBJECTS[type]||DEFAULT_SUBJECTS;
+    setCourseTypes(subjects);
+  }}/>;
   if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers}/>;
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
     {pinModalOpen&&<AccountChangeModal accounts={accounts} setAccounts={setAccounts} onClose={()=>setPinModalOpen(false)}/>}
