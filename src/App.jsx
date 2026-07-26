@@ -8169,8 +8169,10 @@ achievements:[
 };
 
 function useLS(key,init){
-  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);if(s)return JSON.parse(s);return isBlank&&Array.isArray(init)?[]:init;}catch{return isBlank&&Array.isArray(init)?[]:init;}});
-  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);localStorage.setItem(key,JSON.stringify(next));if(!isBlank){const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);}},[key,val]);
+  // blank 모드는 별도 키 사용 → 실제 데이터와 완전 분리
+  const sk=isBlank?`blank_${key}`:key;
+  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(sk);if(s)return JSON.parse(s);return isBlank&&Array.isArray(init)?[]:init;}catch{return isBlank&&Array.isArray(init)?[]:init;}});
+  const update=useCallback(v=>{const next=typeof v==='function'?v(val):v;setVal(next);localStorage.setItem(sk,JSON.stringify(next));if(!isBlank){const tbl=SUPABASE_TABLES[key];if(tbl&&Array.isArray(next))dbSync(tbl,next);}},[key,val]);
   return[val,update];
 }
 
