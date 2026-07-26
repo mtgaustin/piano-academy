@@ -8965,7 +8965,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
           <div className="text-xs font-semibold text-purple-700 mb-2">석사 (선택)</div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="대학원"><input className={inp} value={form.edu?.mastUniv||''} onChange={setEdu('mastUniv')} placeholder="예: 한국예술종합학교"/></Field>
-            <Field label="학과"><input className={inp} value={form.edu?.mastMajor||''} onChange={setEdu('mastMajor')} placeholder="예: 피아노"/></Field>
+            <Field label="학과"><input className={inp} value={form.edu?.mastMajor||''} onChange={setEdu('mastMajor')} placeholder="예: 피아노, 수학 등"/></Field>
           </div>
         </div>
         <div className="bg-yellow-50 rounded-xl p-4">
@@ -8992,7 +8992,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
         </div>}
         <div className="grid grid-cols-2 gap-3 bg-white border border-gray-200 rounded-xl p-3">
           <input className={inp} placeholder="근무 기관명 (예: OO음악학원)" value={careerForm.org} onChange={e=>setCareerForm({...careerForm,org:e.target.value})}/>
-          <input className={inp} placeholder="직책/역할 (예: 피아노 강사)" value={careerForm.role} onChange={e=>setCareerForm({...careerForm,role:e.target.value})}/>
+          <input className={inp} placeholder="직책/역할 (예: 강사, 원장)" value={careerForm.role} onChange={e=>setCareerForm({...careerForm,role:e.target.value})}/>
           <Field label="근무 시작일"><input className={inp} type="date" value={careerForm.startDate} onChange={e=>setCareerForm({...careerForm,startDate:e.target.value})}/></Field>
           <Field label="근무 종료일"><input className={inp} type="date" value={careerForm.endDate} onChange={e=>setCareerForm({...careerForm,endDate:e.target.value})}/></Field>
           <button type="button" className={btn('gray')} style={{gridColumn:'span 2'}} onClick={addCareer}>+ 경력 추가</button>
@@ -11050,9 +11050,9 @@ function VideoManagement({videos,setVideos,students,teachers,academyName,baseUrl
         <Field label="학생 선택" required><select className={inp} value={form.studentId} onChange={e=>setForm({...form,studentId:e.target.value})}>
           <option value="">선택</option>{[...students].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(s=><option key={s.id} value={s.id}>{s.name} ({s.level||s.grade})</option>)}
         </select></Field>
-        <Field label="과목"><input className={inp} value={form.subject} onChange={e=>setForm({...form,subject:e.target.value})} placeholder="예: 피아노"/></Field>
+        <Field label="과목"><input className={inp} value={form.subject} onChange={e=>setForm({...form,subject:e.target.value})} placeholder="예: 수학, 영어, 피아노 등"/></Field>
       </div>
-      <Field label="제목" required><input className={inp} value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="예: 쇼팽 녹턴 1번 연습"/></Field>
+      <Field label="제목" required><input className={inp} value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="예: 과제 제목 또는 학습 내용"/></Field>
       <Field label="날짜"><input className={inp} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></Field>
       <Field label="영상 / 사진 파일 업로드">
         <div
@@ -11555,7 +11555,7 @@ function ParentPortalManager({students,notices,videos,attendance,academyName,set
       <div className="grid grid-cols-1 gap-3">
         <div>
           <label className="text-xs text-slate-700 font-medium mb-1 block">학원 이름 (학부모 앱에 표시)</label>
-          <input className={inp} value={academyName} onChange={e=>setAcademyName(e.target.value)} placeholder="예: 하모니 피아노 학원"/>
+          <input className={inp} value={academyName} onChange={e=>setAcademyName(e.target.value)} placeholder="예: 하모니 학원"/>
         </div>
         <div>
           <label className="text-xs text-slate-700 font-medium mb-1 block">학부모 앱 주소</label>
@@ -11810,7 +11810,7 @@ function ConsultationManagement({consultations,setConsultations,consultContext,c
           <input className={inp} value={form.grade} onChange={e=>setForm({...form,grade:e.target.value})} placeholder="초3, 중1, 고1 등"/>
         </Field>
         <Field label="관심 수업" required>
-          <input className={inp} value={form.interestedClass} onChange={e=>setForm({...form,interestedClass:e.target.value})} placeholder="피아노 기초반"/>
+          <input className={inp} value={form.interestedClass} onChange={e=>setForm({...form,interestedClass:e.target.value})} placeholder="관심 수업명"/>
         </Field>
         <Field label="유입경로">
           <select className={inp} value={form.source} onChange={e=>setForm({...form,source:e.target.value,sourceNote:''})}>
@@ -12612,7 +12612,7 @@ function WithdrawalManagement({withdrawals,setWithdrawals}){
           <input className={inp} value={form.studentName} onChange={e=>setForm({...form,studentName:e.target.value})}/>
         </Field>
         <Field label="레벨">
-          <input className={inp} value={form.grade} onChange={e=>setForm({...form,grade:e.target.value})} placeholder="예: 체르니30·소나티네"/>
+          <input className={inp} value={form.grade} onChange={e=>setForm({...form,grade:e.target.value})} placeholder="예: 학습 레벨 또는 단계"/>
         </Field>
         <Field label="입학일">
           <input type="date" className={inp} value={form.joinDate} onChange={e=>setForm({...form,joinDate:e.target.value})}/>
@@ -13005,7 +13005,7 @@ function AchievementManagement({achievements,setAchievements,students}){
           </select>
         </Field>
         <Field label="과목" required>
-          <input className={inp} value={form.subject} onChange={e=>setForm({...form,subject:e.target.value})} placeholder="예: 피아노"/>
+          <input className={inp} value={form.subject} onChange={e=>setForm({...form,subject:e.target.value})} placeholder="예: 수학, 영어, 피아노 등"/>
         </Field>
         <Field label="레벨">
           <select className={inp} value={form.level} onChange={e=>setForm({...form,level:e.target.value})}>
@@ -13013,7 +13013,7 @@ function AchievementManagement({achievements,setAchievements,students}){
           </select>
         </Field>
         <Field label="현재 곡/작품">
-          <input className={inp} value={form.currentPiece} onChange={e=>setForm({...form,currentPiece:e.target.value})} placeholder="예: 쇼팽 녹턴"/>
+          <input className={inp} value={form.currentPiece} onChange={e=>setForm({...form,currentPiece:e.target.value})} placeholder="예: 현재 학습 중인 내용"/>
         </Field>
         <Field label="대회 이력">
           <div className="space-y-2">
@@ -13315,7 +13315,7 @@ function TypeSelectScreen({onSelect}){
     </div>
   </div>;
 }
-function LoginScreen({onLogin,academyName,accounts,teachers}){
+function LoginScreen({onLogin,academyName,accounts,teachers,onTypeReset}){
   const[step,setStep]=useState('role');
   const[role,setRole]=useState(null);
   const[id,setId]=useState('');
@@ -13376,6 +13376,9 @@ function LoginScreen({onLogin,academyName,accounts,teachers}){
         <button onClick={login} style={{width:'100%',padding:'13px',background:'#1e3a5f',color:'white',border:'none',borderRadius:'12px',fontSize:'15px',fontWeight:'700',cursor:'pointer',marginBottom:'12px'}}>로그인</button>
         <button onClick={()=>{setStep('role');setId('');setPw('');setErr('');}} style={{fontSize:'13px',color:'#94a3b8',background:'none',border:'none',cursor:'pointer'}}>← 뒤로</button>
       </>}
+      {isBlank&&onTypeReset&&<div style={{marginTop:'20px',paddingTop:'16px',borderTop:'1px solid #e2e8f0'}}>
+        <button onClick={onTypeReset} style={{fontSize:'12px',color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'8px',padding:'7px 14px',cursor:'pointer',width:'100%'}}>🔄 학원 유형 변경</button>
+      </div>}
     </div>
   </div>;
 }
@@ -13513,7 +13516,7 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
       ))}
     </div>
     {tab==='academy'&&<div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4 max-w-lg">
-      <Field label="학원 이름" required><input className={inp} value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="예: 하모니 피아노 학원"/></Field>
+      <Field label="학원 이름" required><input className={inp} value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="예: 하모니 학원"/></Field>
       <Field label="학부모 앱 URL"><input className={inp} value={urlInput} onChange={e=>setUrlInput(e.target.value)} placeholder="학부모앱.html"/><p className="text-xs text-slate-400 mt-1">공지·영상 공유 링크에 사용되는 학부모 앱 파일명</p></Field>
       <button className={btn('indigo')} onClick={saveAcademy}>저장</button>
     </div>}
@@ -14051,8 +14054,10 @@ export default function App(){
   if(isBlank&&courseTypes.length===0)return<TypeSelectScreen onSelect={type=>{
     const subjects=BLANK_TYPE_SUBJECTS[type]||DEFAULT_SUBJECTS;
     setCourseTypes(subjects);
+    const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
+    if(nameMap[type])setAcademyName(nameMap[type]);
   }}/>;
-  if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers}/>;
+  if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):undefined}/>;
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
     {pinModalOpen&&<AccountChangeModal accounts={accounts} setAccounts={setAccounts} onClose={()=>setPinModalOpen(false)}/>}
     {/* 모바일 사이드바 열릴 때 뒤 어두운 오버레이 */}
