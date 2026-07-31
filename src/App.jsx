@@ -14149,7 +14149,7 @@ export default function App(){
     {pinModalOpen&&<AccountChangeModal accounts={accounts} setAccounts={setAccounts} onClose={()=>setPinModalOpen(false)}/>}
     {/* 모바일 사이드바 열릴 때 뒤 어두운 오버레이 */}
     {mobileOpen&&<div onClick={()=>setMobileOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:199}}/>}
-    <Sidebar page={page} setPage={setPage} teachers={teachers} students={students} classes={classes} academyName={academyName} role={role} onLogout={()=>{setRole(null);setLoggedInTeacherId(null);setPage('dashboard');setMobileOpen(false);}} mobileOpen={mobileOpen} onMobileClose={()=>setMobileOpen(false)}/>
+    <Sidebar page={page} setPage={setPage} teachers={teachers} students={students} classes={classes} academyName={academyName} role={role} onLogout={()=>{setRole(null);setLoggedInTeacherId(null);setPage('dashboard');setMobileOpen(false);if(!isBlank){authSignOut().then(()=>setSupabaseSession(null));}}} mobileOpen={mobileOpen} onMobileClose={()=>setMobileOpen(false)}/>
     <div className="flex-1 flex flex-col" style={{minWidth:0,height:'100vh',overflow:'hidden'}}>
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-sm">
