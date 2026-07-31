@@ -10,6 +10,25 @@ export const supabase=createClient(SUPABASE_URL,SUPABASE_KEY);
 let _academyId=null;
 export const setAcademyId=(id)=>{_academyId=id;};
 
+// ── Supabase Auth 함수 ───────────────────────────────────────────────────────
+export async function authSignUp(email,password){
+  const{data,error}=await supabase.auth.signUp({email,password});
+  if(error)throw error;
+  return data;
+}
+export async function authSignIn(email,password){
+  const{data,error}=await supabase.auth.signInWithPassword({email,password});
+  if(error)throw error;
+  return data;
+}
+export async function authSignOut(){
+  await supabase.auth.signOut();
+}
+export async function authGetSession(){
+  const{data:{session}}=await supabase.auth.getSession();
+  return session;
+}
+
 // camelCase → snake_case (예: teacherId → teacher_id)
 const toSC=s=>s.replace(/([A-Z])/g,'_$1').toLowerCase();
 // snake_case → camelCase (예: teacher_id → teacherId)

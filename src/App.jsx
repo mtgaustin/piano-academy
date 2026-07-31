@@ -1,6 +1,6 @@
 import "./App.css";
 import React,{useState,useCallback,useRef,useEffect} from "react";
-import{dbSync,dbLoad,setAcademyId}from'./supabase.js';
+import{supabase,dbSync,dbLoad,setAcademyId,authSignUp,authSignIn,authSignOut,authGetSession}from'./supabase.js';
 const SUPABASE_TABLES={'hm_teachers6':'teachers','hm_classes6':'classes','hm_students6':'students','hm_income6':'income','hm_expenses6':'expenses','hm_attendance6':'attendance','hm_notices6':'notices','hm_videos6':'videos','hm_tuitions6':'tuitions','hm_consultations6':'consultations','hm_events6':'events','hm_makeups6':'makeups','hm_withdrawals6':'withdrawals','hm_achievements6':'achievements'};
 const isBlank=new URLSearchParams(window.location.search).get('blank')==='true';
 const BLANK_TYPE=new URLSearchParams(window.location.search).get('type')||'';
@@ -13276,6 +13276,65 @@ function ExpenseSubmit({expenses,setExpenses,teachers,role,loggedInTeacherId}){
 // 강사 역할에서 숨길 페이지 ID 목록
 const TEACHER_HIDDEN=['teachers','tuition','payslip','budget','tax','parent_portal','withdrawal','settings'];
 
+function AcademyAuthScreen({onAuth}){
+  const[tab,setTab]=useState('login'); // 'login' | 'signup'
+  const[email,setEmail]=useState('');
+  const[pw,setPw]=useState('');
+  const[pw2,setPw2]=useState('');
+  const[err,setErr]=useState('');
+  const[loading,setLoading]=useState(false);
+  const inp={width:'100%',padding:'10px 14px',border:'1px solid #e2e8f0',borderRadius:'10px',fontSize:'14px',outline:'none',boxSizing:'border-box',marginTop:'4px'};
+  const handle=async()=>{
+    setErr('');
+    if(!email||!pw){setErr('이메일과 비밀번호를 입력하세요.');return;}
+    if(tab==='signup'&&pw!==pw2){setErr('비밀번호가 일치하지 않습니다.');return;}
+    if(pw.length<6){setErr('비밀번호는 6자리 이상이어야 합니다.');return;}
+    setLoading(true);
+    try{
+      let data;
+      if(tab==='signup'){data=await authSignUp(email,pw);}
+      else{data=await authSignIn(email,pw);}
+      if(data.session)onAuth(data.session);
+      else if(tab==='signup')setErr('가입 확인 이메일을 전송했습니다. 이메일을 확인 후 로그인하세요.');
+    }catch(e){
+      if(e.message.includes('Invalid login'))setErr('이메일 또는 비밀번호가 올바르지 않습니다.');
+      else if(e.message.includes('already registered'))setErr('이미 등록된 이메일입니다. 로그인을 이용하세요.');
+      else setErr(e.message||'오류가 발생했습니다.');
+    }
+    setLoading(false);
+  };
+  return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#1e3a5f 0%,#152d4a 100%)'}}>
+    <div style={{background:'white',borderRadius:'24px',padding:'40px 36px',width:'360px',boxShadow:'0 24px 80px rgba(0,0,0,0.3)',textAlign:'center'}}>
+      <div style={{fontSize:'40px',marginBottom:'10px'}}>🏫</div>
+      <h1 style={{fontSize:'18px',fontWeight:'800',color:'#1e3a5f',marginBottom:'4px'}}>학원관리시스템</h1>
+      <p style={{fontSize:'12px',color:'#94a3b8',marginBottom:'24px'}}>학원 계정으로 로그인하세요</p>
+      {/* 탭 */}
+      <div style={{display:'flex',background:'#f1f5f9',borderRadius:'12px',padding:'4px',marginBottom:'20px'}}>
+        {[{k:'login',l:'로그인'},{k:'signup',l:'신규 등록'}].map(t=>(
+          <button key={t.k} onClick={()=>{setTab(t.k);setErr('');}} style={{flex:1,padding:'8px',border:'none',borderRadius:'9px',fontSize:'13px',fontWeight:'700',cursor:'pointer',transition:'all 0.15s',background:tab===t.k?'white':'transparent',color:tab===t.k?'#1e3a5f':'#94a3b8',boxShadow:tab===t.k?'0 1px 4px rgba(0,0,0,0.12)':'none'}}>{t.l}</button>
+        ))}
+      </div>
+      {/* 폼 */}
+      <div style={{textAlign:'left',marginBottom:'12px'}}>
+        <label style={{fontSize:'12px',fontWeight:'700',color:'#475569'}}>이메일</label>
+        <input type="email" style={inp} value={email} onChange={e=>{setEmail(e.target.value);setErr('');}} placeholder="academy@example.com" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+      </div>
+      <div style={{textAlign:'left',marginBottom:tab==='signup'?'12px':'16px'}}>
+        <label style={{fontSize:'12px',fontWeight:'700',color:'#475569'}}>비밀번호</label>
+        <input type="password" style={inp} value={pw} onChange={e=>{setPw(e.target.value);setErr('');}} placeholder="6자리 이상" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+      </div>
+      {tab==='signup'&&<div style={{textAlign:'left',marginBottom:'16px'}}>
+        <label style={{fontSize:'12px',fontWeight:'700',color:'#475569'}}>비밀번호 확인</label>
+        <input type="password" style={inp} value={pw2} onChange={e=>{setPw2(e.target.value);setErr('');}} placeholder="비밀번호 재입력" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+      </div>}
+      {err&&<p style={{fontSize:'12px',color:err.includes('이메일을 확인')?'#16a34a':'#ef4444',marginBottom:'12px',fontWeight:'600',textAlign:'left'}}>{err}</p>}
+      <button onClick={handle} disabled={loading} style={{width:'100%',padding:'13px',background:loading?'#94a3b8':'#1e3a5f',color:'white',border:'none',borderRadius:'12px',fontSize:'15px',fontWeight:'700',cursor:loading?'not-allowed':'pointer'}}>
+        {loading?'처리 중...':(tab==='login'?'로그인':'학원 등록')}
+      </button>
+    </div>
+  </div>;
+}
+
 function TypeSelectScreen({onSelect}){
   const types=[
     {key:'piano', icon:'🎹', label:'피아노·음악'},
@@ -13920,12 +13979,36 @@ export default function App(){
   const[loggedInTeacherId,setLoggedInTeacherId]=useState(null);
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
+  // ── Supabase Auth 상태 ──────────────────────────────────────────────────────
+  const[supabaseSession,setSupabaseSession]=useState(null);
+  const[authChecked,setAuthChecked]=useState(isBlank); // blank 모드는 auth 불필요
   // ── Academy ID 초기화 (다중 학원 데이터 분리) ──────────────────────────────
-  // 최초 실행 시 UUID 생성 → 이후 모든 Supabase 쿼리는 이 ID로 필터링됨
   useEffect(()=>{
-    const id=accounts.academyId||crypto.randomUUID();
-    if(!accounts.academyId)setAccounts(prev=>({...prev,academyId:id}));
-    setAcademyId(id);
+    if(isBlank){
+      // blank 모드: 랜덤 UUID 사용 (auth 불필요)
+      const id=accounts.academyId||crypto.randomUUID();
+      if(!accounts.academyId)setAccounts(prev=>({...prev,academyId:id}));
+      setAcademyId(id);
+      return;
+    }
+    // 실서비스 모드: Supabase Auth 세션 확인
+    authGetSession().then(session=>{
+      setSupabaseSession(session);
+      setAuthChecked(true);
+      if(session){
+        setAcademyId(session.user.id);
+        if(accounts.academyId!==session.user.id)setAccounts(prev=>({...prev,academyId:session.user.id}));
+      }
+    });
+    // Auth 상태 변화 구독
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((_,session)=>{
+      setSupabaseSession(session);
+      if(session){
+        setAcademyId(session.user.id);
+        if(accounts.academyId!==session.user.id)setAccounts(prev=>({...prev,academyId:session.user.id}));
+      }
+    });
+    return()=>subscription.unsubscribe();
   },[]);
   // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
   useEffect(()=>{
@@ -14050,6 +14133,10 @@ export default function App(){
     setLastAutoGenMonth(curM);
   },[role]);
   // 로그인 화면 — useEffect 포함 모든 훅 호출 후에 조건부 렌더링 (React 훅 규칙 준수)
+  // Auth 확인 중 로딩 스피너
+  if(!authChecked)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#1e3a5f 0%,#152d4a 100%)'}}><div style={{color:'white',fontSize:'16px',fontWeight:'600'}}>⏳ 연결 중...</div></div>;
+  // 실서비스 모드: Supabase Auth 미로그인 시 학원 계정 화면
+  if(!isBlank&&!supabaseSession)return<AcademyAuthScreen onAuth={session=>{setSupabaseSession(session);setAcademyId(session.user.id);setAccounts(prev=>({...prev,academyId:session.user.id}));}}/>;
   // blank 모드: 학원 유형 미선택 시 유형 선택 화면 먼저 표시
   if(isBlank&&courseTypes.length===0)return<TypeSelectScreen onSelect={type=>{
     const subjects=BLANK_TYPE_SUBJECTS[type]||DEFAULT_SUBJECTS;
