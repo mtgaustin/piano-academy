@@ -13344,6 +13344,8 @@ function TypeSelectScreen({onSelect}){
     {key:'taekwondo',icon:'🥋',label:'태권도·무도'},
     {key:'art',   icon:'🎨', label:'미술'},
   ];
+  const[showCustomInput,setShowCustomInput]=useState(false);
+  const[customName,setCustomName]=useState('');
   useEffect(()=>{
     if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])onSelect(BLANK_TYPE);
   },[]);
@@ -13364,12 +13366,31 @@ function TypeSelectScreen({onSelect}){
           <div style={{fontSize:'14px',fontWeight:'700',color:'#1e293b'}}>{t.label}</div>
         </button>)}
       </div>
-      <button onClick={()=>onSelect('custom')}
-        style={{width:'100%',padding:'14px',background:'white',border:'2px dashed #cbd5e1',borderRadius:'12px',cursor:'pointer',fontSize:'14px',color:'#64748b',fontWeight:'600',transition:'all 0.15s'}}
-        onMouseEnter={e=>{e.currentTarget.style.borderColor='#94a3b8';e.currentTarget.style.color='#475569';}}
-        onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#64748b';}}>
-        ✏️ &nbsp;기타 (직접 설정)
-      </button>
+      {!showCustomInput
+        ?<button onClick={()=>setShowCustomInput(true)}
+          style={{width:'100%',padding:'14px',background:'white',border:'2px dashed #cbd5e1',borderRadius:'12px',cursor:'pointer',fontSize:'14px',color:'#64748b',fontWeight:'600',transition:'all 0.15s'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor='#94a3b8';e.currentTarget.style.color='#475569';}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#64748b';}}>
+          ✏️ &nbsp;기타 (직접 설정)
+        </button>
+        :<div style={{background:'white',border:'2px solid #1e3a5f',borderRadius:'12px',padding:'16px'}}>
+          <p style={{fontSize:'13px',fontWeight:'700',color:'#1e293b',margin:'0 0 10px'}}>학원명을 입력하세요</p>
+          <input
+            autoFocus
+            value={customName}
+            onChange={e=>setCustomName(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&customName.trim()&&onSelect('custom',customName.trim())}
+            placeholder="예) 우리 태권도 학원"
+            style={{width:'100%',padding:'10px 12px',border:'1px solid #e2e8f0',borderRadius:'8px',fontSize:'14px',outline:'none',boxSizing:'border-box',marginBottom:'10px'}}/>
+          <div style={{display:'flex',gap:'8px'}}>
+            <button onClick={()=>setShowCustomInput(false)}
+              style={{flex:1,padding:'10px',background:'#f1f5f9',border:'none',borderRadius:'8px',fontSize:'13px',color:'#64748b',fontWeight:'600',cursor:'pointer'}}>취소</button>
+            <button onClick={()=>{if(customName.trim())onSelect('custom',customName.trim());}}
+              disabled={!customName.trim()}
+              style={{flex:2,padding:'10px',background:customName.trim()?'#1e3a5f':'#cbd5e1',border:'none',borderRadius:'8px',fontSize:'13px',color:'white',fontWeight:'700',cursor:customName.trim()?'pointer':'default'}}>시작하기</button>
+          </div>
+        </div>
+      }
       <p style={{textAlign:'center',fontSize:'12px',color:'#94a3b8',marginTop:'20px'}}>과정·수업명은 나중에 언제든지 변경할 수 있습니다</p>
     </div>
   </div>;
@@ -14138,11 +14159,11 @@ export default function App(){
   // 실서비스 모드: Supabase Auth 미로그인 시 학원 계정 화면
   if(!isBlank&&!supabaseSession)return<AcademyAuthScreen onAuth={session=>{setSupabaseSession(session);setAcademyId(session.user.id);setAccounts(prev=>({...prev,academyId:session.user.id}));}}/>;
   // blank 모드: 학원 유형 미선택 시 유형 선택 화면 먼저 표시
-  if(isBlank&&courseTypes.length===0)return<TypeSelectScreen onSelect={type=>{
+  if(isBlank&&courseTypes.length===0)return<TypeSelectScreen onSelect={(type,customAcademyName)=>{
     const subjects=BLANK_TYPE_SUBJECTS[type]||DEFAULT_SUBJECTS;
     setCourseTypes(subjects);
     const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
-    setAcademyName(nameMap[type]||'');
+    setAcademyName(customAcademyName||nameMap[type]||'내 학원');
   }}/>;
   if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):undefined}/>;
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
