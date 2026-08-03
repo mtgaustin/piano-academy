@@ -35,6 +35,35 @@ const BLANK_TYPE_SUBJECTS={
   stem_etc:['기초반','초급반','중급반','고급반','성인반'],
   custom:['기초반','초급반','중급반','고급반','성인반'],
 };
+function generateBlankSample(subjects){
+  const t=today();const m=t.slice(0,7);
+  const s0=subjects[0]||'기초반';const s1=subjects[1]||s0;
+  return{
+    teachers:[
+      {id:'_s_t1',name:'김선생',subjects:[s0],phone:'010-0000-1111',email:'',salary:2000000,dependents:0,status:'active',note:'예시 강사 (삭제 가능)',contractStart:'2026-01-01',contractEnd:'2027-12-31',edu:{bachUniv:'',bachMajor:'',mastUniv:'',mastMajor:'',phdUniv:'',phdMajor:''},career:[],attachments:[],_sample:true},
+      {id:'_s_t2',name:'이선생',subjects:[s1],phone:'010-0000-2222',email:'',salary:1800000,dependents:1,status:'active',note:'예시 강사 (삭제 가능)',contractStart:'2026-01-01',contractEnd:'2027-12-31',edu:{bachUniv:'',bachMajor:'',mastUniv:'',mastMajor:'',phdUniv:'',phdMajor:''},career:[],attachments:[],_sample:true},
+    ],
+    classes:[
+      {id:'_s_c1',name:`${s0} A반`,teacherId:'_s_t1',subject:s0,days:[1,3],startTime:'15:00',endTime:'16:00',room:'1교실',maxStudents:10,fee:150000,openDate:'2026-01-01',closeDate:'',_sample:true},
+      {id:'_s_c2',name:`${s1} B반`,teacherId:'_s_t2',subject:s1,days:[2,4],startTime:'16:00',endTime:'17:00',room:'2교실',maxStudents:10,fee:170000,openDate:'2026-01-01',closeDate:'',_sample:true},
+    ],
+    students:[
+      {id:'_s_s1',name:'김학생',grade:'초3',class:'_s_c1',level:'',phone:'010-0000-3001',parentName:'김부모',parentPhone:'010-0000-4001',email:'',enrolledClasses:['_s_c1'],joinDate:'2026-01-05',status:'active',enrollmentHistory:[{joinDate:'2026-01-05',leaveDate:null}],progressNotes:[],memo:'',_sample:true},
+      {id:'_s_s2',name:'이학생',grade:'초5',class:'_s_c1',level:'',phone:'010-0000-3002',parentName:'이부모',parentPhone:'010-0000-4002',email:'',enrolledClasses:['_s_c1'],joinDate:'2026-02-10',status:'active',enrollmentHistory:[{joinDate:'2026-02-10',leaveDate:null}],progressNotes:[],memo:'',_sample:true},
+      {id:'_s_s3',name:'박학생',grade:'중1',class:'_s_c2',level:'',phone:'010-0000-3003',parentName:'박부모',parentPhone:'010-0000-4003',email:'',enrolledClasses:['_s_c2'],joinDate:'2026-03-15',status:'active',enrollmentHistory:[{joinDate:'2026-03-15',leaveDate:null}],progressNotes:[],memo:'',_sample:true},
+      {id:'_s_s4',name:'최학생',grade:'초2',class:'_s_c1',level:'',phone:'010-0000-3004',parentName:'최부모',parentPhone:'010-0000-4004',email:'',enrolledClasses:['_s_c1'],joinDate:'2026-04-01',status:'active',enrollmentHistory:[{joinDate:'2026-04-01',leaveDate:null}],progressNotes:[],memo:'',_sample:true},
+    ],
+    tuitions:[
+      {id:'_s_tu1',studentId:'_s_s1',month:m,amount:150000,paid:true,paidDate:m+'-05',note:'',_sample:true},
+      {id:'_s_tu2',studentId:'_s_s2',month:m,amount:150000,paid:true,paidDate:m+'-07',note:'',_sample:true},
+      {id:'_s_tu3',studentId:'_s_s3',month:m,amount:170000,paid:false,paidDate:'',note:'',_sample:true},
+      {id:'_s_tu4',studentId:'_s_s4',month:m,amount:150000,paid:false,paidDate:'',note:'',_sample:true},
+    ],
+    notices:[
+      {id:'_s_n1',title:'👋 데모 사용 안내',content:'이 데이터는 프로그램 체험을 위한 예시입니다.\n직접 데이터를 입력해 보시고, 완료 후 상단의 [예시 데이터 삭제] 버튼을 누르세요.',date:t,author:'관리자',pinned:true,_sample:true},
+    ],
+  };
+}
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
 const copyToClipboard=(text,msg='링크가 복사되었습니다! 카카오톡에 붙여넣기 하세요.')=>{
@@ -14306,9 +14335,12 @@ export default function App(){
     const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
     setAcademyName(customAcademyName||nameMap[type]||'내 학원');
     setAcademyType(type);
-    if(!isBlank)setTypeConfigured(true);
+    if(!isBlank){setTypeConfigured(true);}
+    else{const sd=generateBlankSample(subjects);setTeachers(sd.teachers);setClasses(sd.classes);setStudents(sd.students);setTuitions(sd.tuitions);setNotices(sd.notices);}
   }}/>;
   if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} academyType={academyType} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):()=>setTypeConfigured(false)}/>;
+  const hasSampleData=isBlank&&(teachers.some(t=>t._sample)||students.some(s=>s._sample));
+  const clearSampleData=()=>{setTeachers(p=>p.filter(t=>!t._sample));setClasses(p=>p.filter(c=>!c._sample));setStudents(p=>p.filter(s=>!s._sample));setTuitions(p=>p.filter(t=>!t._sample));setNotices(p=>p.filter(n=>!n._sample));};
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
     {pinModalOpen&&<AccountChangeModal accounts={accounts} setAccounts={setAccounts} onClose={()=>setPinModalOpen(false)}/>}
     {/* 모바일 사이드바 열릴 때 뒤 어두운 오버레이 */}
@@ -14329,6 +14361,10 @@ export default function App(){
           {role==='director'&&!isBlank&&<button onClick={reset} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">데이터 초기화</button>}
         </div>
       </div>
+      {hasSampleData&&<div style={{background:'#fef3c7',borderBottom:'1px solid #fcd34d',padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+        <span style={{fontSize:'13px',color:'#92400e',fontWeight:'600'}}>📋 현재 예시 데이터가 로드되어 있습니다. 직접 데이터를 입력해보고 완료 후 삭제하세요.</span>
+        <button onClick={clearSampleData} style={{padding:'5px 14px',background:'#d97706',color:'white',border:'none',borderRadius:'6px',fontSize:'12px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap',marginLeft:'12px'}}>예시 데이터 삭제</button>
+      </div>}
       <main className="flex-1 p-6 overflow-y-auto" style={{background:'#f8fafc'}}>
         {page==='dashboard'&&<Dashboard teachers={teachers} students={students} classes={classes} income={income} expenses={expenses} tuitions={tuitions} attendance={attendance} consultations={consultations} setPage={setPage} setAttContext={setAttContext} setConsultContext={setConsultContext} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='teachers'&&<TeacherManagement teachers={teachers} setTeachers={setTeachers} classes={classes} setClasses={setClasses} attendance={attendance} setAttendance={setAttendance} courseTypes={courseTypes} setCourseTypes={setCourseTypes}/>}
