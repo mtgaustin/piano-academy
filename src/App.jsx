@@ -33,6 +33,7 @@ const BLANK_TYPE_SUBJECTS={
   science:['과학 탐구반','초등 과학반','중등 과학반','고등 심화반','실험·탐구반'],
   coding:['스크래치 입문반','파이썬 기초반','앱 개발반','알고리즘·코테반','성인 코딩반'],
   stem_etc:['기초반','초급반','중급반','고급반','성인반'],
+  custom:['기초반','초급반','중급반','고급반','성인반'],
 };
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
