@@ -14142,7 +14142,7 @@ export default function App(){
     const subjects=BLANK_TYPE_SUBJECTS[type]||DEFAULT_SUBJECTS;
     setCourseTypes(subjects);
     const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
-    if(nameMap[type])setAcademyName(nameMap[type]);
+    setAcademyName(nameMap[type]||'');
   }}/>;
   if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):undefined}/>;
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
