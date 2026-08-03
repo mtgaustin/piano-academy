@@ -13425,19 +13425,21 @@ function LoginScreen({onLogin,academyName,accounts,teachers,onTypeReset}){
     }
   };
   const inp2={width:'100%',padding:'10px 14px',border:'1px solid #e2e8f0',borderRadius:'10px',fontSize:'14px',outline:'none',boxSizing:'border-box',marginTop:'4px'};
+  const n=academyName||'';
+  const typeIcon=n.includes('수학')?'📐':n.includes('영어')?'🔤':n.includes('국어')||n.includes('논술')?'📖':n.includes('태권도')||n.includes('무도')?'🥋':n.includes('미술')?'🎨':'🎹';
   return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#1e3a5f 0%,#152d4a 100%)'}}>
     <div style={{position:'relative',background:'white',borderRadius:'24px',padding:'48px 40px',width:'360px',boxShadow:'0 24px 80px rgba(0,0,0,0.3)',textAlign:'center'}}>
-      <div style={{position:'absolute',top:'16px',right:'16px',background:'#f59e0b',color:'white',fontSize:'10px',fontWeight:'800',padding:'3px 10px',borderRadius:'20px',letterSpacing:'0.05em'}}>DEMO</div>
-      <div style={{fontSize:'48px',marginBottom:'12px'}}>🎹</div>
-      <h1 style={{fontSize:'20px',fontWeight:'800',color:'#1e3a5f',marginBottom:'4px'}}>{academyName||'피아노 학원'}</h1>
+      {isBlank&&<div style={{position:'absolute',top:'16px',right:'16px',background:'#f59e0b',color:'white',fontSize:'10px',fontWeight:'800',padding:'3px 10px',borderRadius:'20px',letterSpacing:'0.05em'}}>DEMO</div>}
+      <div style={{fontSize:'48px',marginBottom:'12px'}}>{typeIcon}</div>
+      <h1 style={{fontSize:'20px',fontWeight:'800',color:'#1e3a5f',marginBottom:'4px'}}>{academyName||'내 학원'}</h1>
       <p style={{fontSize:'13px',color:'#64748b',marginBottom:'20px'}}>학원 관리 시스템</p>
-      <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'12px',padding:'12px 14px',marginBottom:'20px',textAlign:'left'}}>
+      {isBlank&&<div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'12px',padding:'12px 14px',marginBottom:'20px',textAlign:'left'}}>
         <p style={{fontSize:'11px',fontWeight:'700',color:'#1e40af',marginBottom:'6px'}}>🔑 데모 체험 계정</p>
         <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
           <p style={{fontSize:'11px',color:'#1e3a5f'}}><span style={{fontWeight:'700'}}>원장</span>&nbsp; ID: <code style={{background:'#dbeafe',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>director</code> &nbsp;PW: <code style={{background:'#dbeafe',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>1234</code></p>
           <p style={{fontSize:'11px',color:'#1e3a5f'}}><span style={{fontWeight:'700'}}>강사</span>&nbsp; ID: 강사 이름 &nbsp;PW: <code style={{background:'#dbeafe',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>0000</code></p>
         </div>
-      </div>
+      </div>}
       {step==='role'&&<>
         <p style={{fontSize:'13px',color:'#475569',fontWeight:'600',marginBottom:'16px'}}>로그인 유형을 선택하세요</p>
         <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
