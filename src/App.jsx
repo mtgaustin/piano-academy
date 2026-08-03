@@ -7,11 +7,32 @@ const BLANK_TYPE=new URLSearchParams(window.location.search).get('type')||'';
 const DEFAULT_SUBJECTS=['유아·초급 과정','중급 과정 (체르니30·소나티네)','고급 과정 (소나타·인벤션)','콩쿠르·입시 과정','성인·청소년 과정','음악이론·시창 과정'];
 const BLANK_TYPE_SUBJECTS={
   piano:['유아·초급 과정','중급 과정 (체르니30·소나티네)','고급 과정 (소나타·인벤션)','콩쿠르·입시 과정','성인·청소년 과정','음악이론·시창 과정'],
-  math:['초등수학','중등수학','고등수학 일반','수능수학','내신대비반','심화반'],
-  english:['파닉스·입문','초등영어','중등영문법','고등영어','수능영어','회화반'],
-  korean:['독서논술','초등국어','중등국어','고등국어','수능국어','논술반'],
-  taekwondo:['유아부','초등부','중·고등부','성인부','선수반','품새반'],
+  violin:['바이올린 기초반','초급반 (스즈키1~3권)','중급반 (비오티·모차르트)','고급반·콩쿠르반','성인반'],
+  guitar:['기타 입문반','초급반 (코드·스트럼)','중급반 (솔로·클래식)','고급반','성인 취미반'],
+  vocal:['발성 기초반','초급 보컬반','중급반 (장르별)','고급·오디션반','성인반'],
+  drum:['드럼 입문반','초급반','중급반','고급반','성인 취미반'],
+  music_etc:['입문반','초급반','중급반','고급반','성인반'],
   art:['유아미술','초등미술','중등미술','입시미술','성인미술','디자인반'],
+  ballet:['유아 발레반 (3~6세)','아동 발레반 (7~10세)','중급반','상급·콩쿠르반','성인 발레반'],
+  drama:['연기 기초반','뮤지컬 입문반','중급 보컬·연기반','무대 실전반','성인반'],
+  craft:['공예 기초반','도예반','아동 미술공예반','업사이클링반','성인반'],
+  taekwondo:['유아부','초등부','중·고등부','성인부','선수반','품새반'],
+  swimming:['유아 수영반','초급반 (자유형·배영)','중급반 (평영·접영)','고급반','성인반'],
+  ball:['기초반','초급반','중급반','고급반','성인반'],
+  gym:['체조 기초반','초급반','중급반','고급반','성인 체육반'],
+  badminton:['배드민턴 입문반','초급반','중급반','고급반','성인반'],
+  english:['파닉스·입문','초등영어','중등영문법','고등영어','수능영어','회화반'],
+  chinese:['중국어 기초반','초급반 (HSK 1~2)','중급반 (HSK 3~4)','고급반 (HSK 5~6)','성인반'],
+  japanese:['일본어 기초반','초급반 (JLPT N5)','중급반 (JLPT N4~3)','고급반 (JLPT N2~1)','성인반'],
+  lang_etc:['기초반','초급반','중급반','고급반','성인반'],
+  korean:['독서논술','초등국어','중등국어','고등국어','수능국어','논술반'],
+  essay:['초등 논술반','중등 논술반','고등 수능 논술반','입시 논술반','성인반'],
+  reading:['독서 기초반','초등 독서반','중등 독서토론반','고등 심화반','성인반'],
+  hanja:['기초반 (8~7급)','초급반 (6~5급)','중급반 (4~3급)','고급반 (2~1급)','성인반'],
+  math:['초등수학','중등수학','고등수학 일반','수능수학','내신대비반','심화반'],
+  science:['과학 탐구반','초등 과학반','중등 과학반','고등 심화반','실험·탐구반'],
+  coding:['스크래치 입문반','파이썬 기초반','앱 개발반','알고리즘·코테반','성인 코딩반'],
+  stem_etc:['기초반','초급반','중급반','고급반','성인반'],
 };
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
 const encodeShare=data=>btoa(encodeURIComponent(JSON.stringify(data)));
@@ -13336,63 +13357,111 @@ function AcademyAuthScreen({onAuth}){
 }
 
 function TypeSelectScreen({onSelect}){
-  const types=[
-    {key:'piano', icon:'🎹', label:'피아노·음악'},
-    {key:'math',  icon:'📐', label:'수학'},
-    {key:'english',icon:'🔤', label:'영어'},
-    {key:'korean', icon:'📖', label:'국어·논술'},
-    {key:'taekwondo',icon:'🥋',label:'태권도·무도'},
-    {key:'art',   icon:'🎨', label:'미술'},
+  const CATS=[
+    {key:'music', icon:'🎵', label:'음악', subtypes:[
+      {key:'piano',    icon:'🎹', label:'피아노'},
+      {key:'violin',   icon:'🎻', label:'바이올린·첼로'},
+      {key:'guitar',   icon:'🎸', label:'기타·우쿨렐레'},
+      {key:'vocal',    icon:'🎤', label:'성악·보컬'},
+      {key:'drum',     icon:'🥁', label:'드럼·타악기'},
+      {key:'music_etc',icon:'🎼', label:'기타 악기'},
+    ]},
+    {key:'arts', icon:'🎨', label:'예술', subtypes:[
+      {key:'art',      icon:'🖌️', label:'미술·그림'},
+      {key:'ballet',   icon:'💃', label:'발레·무용'},
+      {key:'drama',    icon:'🎭', label:'연기·뮤지컬'},
+      {key:'craft',    icon:'🏺', label:'공예·도예'},
+    ]},
+    {key:'sports', icon:'🏃', label:'운동·체육', subtypes:[
+      {key:'taekwondo',icon:'🥋', label:'태권도·무도'},
+      {key:'swimming', icon:'🏊', label:'수영'},
+      {key:'ball',     icon:'⚽', label:'구기 종목'},
+      {key:'gym',      icon:'🤸', label:'체조·체육'},
+      {key:'badminton',icon:'🏸', label:'배드민턴·탁구'},
+    ]},
+    {key:'lang', icon:'🌍', label:'언어·외국어', subtypes:[
+      {key:'english',  icon:'🔤', label:'영어'},
+      {key:'chinese',  icon:'🀄', label:'중국어'},
+      {key:'japanese', icon:'🌸', label:'일본어'},
+      {key:'lang_etc', icon:'💬', label:'기타 언어'},
+    ]},
+    {key:'kor', icon:'📖', label:'국어·문학', subtypes:[
+      {key:'korean',   icon:'📖', label:'국어'},
+      {key:'essay',    icon:'✍️', label:'논술'},
+      {key:'reading',  icon:'📚', label:'독서·토론'},
+      {key:'hanja',    icon:'📜', label:'한자'},
+    ]},
+    {key:'stem', icon:'📐', label:'수학·과학', subtypes:[
+      {key:'math',     icon:'📐', label:'수학'},
+      {key:'science',  icon:'🔬', label:'과학'},
+      {key:'coding',   icon:'💻', label:'코딩·SW'},
+      {key:'stem_etc', icon:'🔢', label:'기타'},
+    ]},
   ];
-  const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
-  const[selectedType,setSelectedType]=useState(null);
+  const NAME_DEFAULTS={
+    piano:'하모니 피아노 학원',violin:'하모니 바이올린 학원',guitar:'하모니 기타 학원',
+    vocal:'하모니 보컬 학원',drum:'하모니 드럼 학원',music_etc:'하모니 음악 학원',
+    art:'하모니 미술 학원',ballet:'하모니 발레 학원',drama:'하모니 뮤지컬 학원',craft:'하모니 공예 학원',
+    taekwondo:'하모니 태권도 학원',swimming:'하모니 수영 학원',ball:'하모니 스포츠 학원',
+    gym:'하모니 체육 학원',badminton:'하모니 배드민턴 학원',
+    english:'하모니 영어 학원',chinese:'하모니 중국어 학원',japanese:'하모니 일본어 학원',lang_etc:'하모니 어학원',
+    korean:'하모니 국어 학원',essay:'하모니 논술 학원',reading:'하모니 독서 학원',hanja:'하모니 한자 학원',
+    math:'하모니 수학 학원',science:'하모니 과학 학원',coding:'하모니 코딩 학원',stem_etc:'하모니 학원',
+  };
+  const[selCat,setSelCat]=useState(null);
+  const[selType,setSelType]=useState(null);
   const[nameInput,setNameInput]=useState('');
-  const selectType=key=>{setSelectedType(key);setNameInput(nameMap[key]||'');};
-  useEffect(()=>{
-    if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])onSelect(BLANK_TYPE);
-  },[]);
+  useEffect(()=>{if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])onSelect(BLANK_TYPE);},[]);
   if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])return null;
+  const cat=CATS.find(c=>c.key===selCat);
+  const sub=cat?.subtypes.find(t=>t.key===selType);
+  const btnBase={padding:'18px 12px',background:'white',border:'2px solid #e2e8f0',borderRadius:'14px',cursor:'pointer',textAlign:'center',transition:'all 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'};
+  const hIn=e=>{e.currentTarget.style.borderColor='#1e3a5f';e.currentTarget.style.boxShadow='0 4px 12px rgba(30,58,95,0.15)';};
+  const hOut=e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';};
   return<div style={{minHeight:'100vh',background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}}>
-    <div style={{width:'100%',maxWidth:'480px'}}>
-      <div style={{textAlign:'center',marginBottom:'32px'}}>
-        <div style={{fontSize:'40px',marginBottom:'12px'}}>🏫</div>
-        <h1 style={{fontSize:'22px',fontWeight:'800',color:'#1e293b',margin:'0 0 8px'}}>학원 유형을 선택하세요</h1>
-        <p style={{fontSize:'14px',color:'#64748b',margin:0}}>선택한 유형에 맞게 과정·수업 기본값이 자동 설정됩니다</p>
+    <div style={{width:'100%',maxWidth:'500px'}}>
+      <div style={{textAlign:'center',marginBottom:'24px'}}>
+        <div style={{fontSize:'36px',marginBottom:'10px'}}>🏫</div>
+        {!selCat&&<><h1 style={{fontSize:'21px',fontWeight:'800',color:'#1e293b',margin:'0 0 6px'}}>학원 유형을 선택하세요</h1>
+          <p style={{fontSize:'13px',color:'#64748b',margin:0}}>카테고리 선택 후 세부 유형을 고르세요</p></>}
+        {selCat&&!selType&&<><h1 style={{fontSize:'21px',fontWeight:'800',color:'#1e293b',margin:'0 0 6px'}}>{cat?.icon} {cat?.label}</h1>
+          <p style={{fontSize:'13px',color:'#64748b',margin:0}}>세부 유형을 선택하세요</p></>}
+        {selType&&<><h1 style={{fontSize:'21px',fontWeight:'800',color:'#1e293b',margin:'0 0 6px'}}>학원명을 입력하세요</h1>
+          <p style={{fontSize:'13px',color:'#64748b',margin:0}}>{sub?.icon||'✏️'} {sub?.label||'기타'} 선택됨</p></>}
       </div>
-      {!selectedType?<>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'16px'}}>
-          {types.map(t=><button key={t.key} onClick={()=>selectType(t.key)}
-            style={{padding:'20px 16px',background:'white',border:'2px solid #e2e8f0',borderRadius:'16px',cursor:'pointer',textAlign:'center',transition:'all 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor='#1e3a5f';e.currentTarget.style.boxShadow='0 4px 12px rgba(30,58,95,0.15)';}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';}}>
-            <div style={{fontSize:'28px',marginBottom:'6px'}}>{t.icon}</div>
-            <div style={{fontSize:'14px',fontWeight:'700',color:'#1e293b'}}>{t.label}</div>
+      {!selCat&&<>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'10px'}}>
+          {CATS.map(c=><button key={c.key} onClick={()=>setSelCat(c.key)} style={btnBase} onMouseEnter={hIn} onMouseLeave={hOut}>
+            <div style={{fontSize:'26px',marginBottom:'5px'}}>{c.icon}</div>
+            <div style={{fontSize:'12px',fontWeight:'700',color:'#1e293b'}}>{c.label}</div>
           </button>)}
         </div>
-        <button onClick={()=>selectType('custom')}
-          style={{width:'100%',padding:'14px',background:'white',border:'2px dashed #cbd5e1',borderRadius:'12px',cursor:'pointer',fontSize:'14px',color:'#64748b',fontWeight:'600',transition:'all 0.15s'}}
+        <button onClick={()=>{setSelCat('custom');setSelType('custom');setNameInput('');}}
+          style={{width:'100%',padding:'13px',background:'white',border:'2px dashed #cbd5e1',borderRadius:'12px',cursor:'pointer',fontSize:'13px',color:'#64748b',fontWeight:'600',transition:'all 0.15s'}}
           onMouseEnter={e=>{e.currentTarget.style.borderColor='#94a3b8';e.currentTarget.style.color='#475569';}}
           onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#64748b';}}>
           ✏️ &nbsp;기타 (직접 설정)
         </button>
-      </>
-      :<div style={{background:'white',border:'2px solid #1e3a5f',borderRadius:'16px',padding:'20px'}}>
-        <p style={{fontSize:'13px',color:'#64748b',margin:'0 0 4px'}}>
-          {types.find(t=>t.key===selectedType)?.icon||'✏️'} {types.find(t=>t.key===selectedType)?.label||'기타'} 선택됨
-        </p>
-        <p style={{fontSize:'15px',fontWeight:'800',color:'#1e293b',margin:'0 0 14px'}}>학원명을 입력하세요</p>
-        <input
-          autoFocus
-          value={nameInput}
-          onChange={e=>setNameInput(e.target.value)}
-          onKeyDown={e=>e.key==='Enter'&&nameInput.trim()&&onSelect(selectedType,nameInput.trim())}
-          placeholder="예) 우리 피아노 학원"
+      </>}
+      {selCat&&selCat!=='custom'&&!selType&&<>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'10px'}}>
+          {cat?.subtypes.map(t=><button key={t.key} onClick={()=>{setSelType(t.key);setNameInput(NAME_DEFAULTS[t.key]||'');}} style={btnBase} onMouseEnter={hIn} onMouseLeave={hOut}>
+            <div style={{fontSize:'26px',marginBottom:'5px'}}>{t.icon}</div>
+            <div style={{fontSize:'13px',fontWeight:'700',color:'#1e293b'}}>{t.label}</div>
+          </button>)}
+        </div>
+        <button onClick={()=>setSelCat(null)}
+          style={{width:'100%',padding:'11px',background:'#f1f5f9',border:'none',borderRadius:'10px',fontSize:'13px',color:'#64748b',fontWeight:'600',cursor:'pointer'}}>← 카테고리로 돌아가기</button>
+      </>}
+      {selType&&<div style={{background:'white',border:'2px solid #1e3a5f',borderRadius:'16px',padding:'20px'}}>
+        <input autoFocus value={nameInput} onChange={e=>setNameInput(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&nameInput.trim()&&onSelect(selType,nameInput.trim())}
+          placeholder="예) 우리 학원"
           style={{width:'100%',padding:'11px 13px',border:'1px solid #cbd5e1',borderRadius:'10px',fontSize:'15px',outline:'none',boxSizing:'border-box',marginBottom:'12px'}}/>
         <div style={{display:'flex',gap:'8px'}}>
-          <button onClick={()=>setSelectedType(null)}
+          <button onClick={()=>{setSelType(null);if(selCat==='custom')setSelCat(null);}}
             style={{flex:1,padding:'11px',background:'#f1f5f9',border:'none',borderRadius:'10px',fontSize:'13px',color:'#64748b',fontWeight:'600',cursor:'pointer'}}>← 뒤로</button>
-          <button onClick={()=>{if(nameInput.trim())onSelect(selectedType,nameInput.trim());}}
-            disabled={!nameInput.trim()}
+          <button onClick={()=>{if(nameInput.trim())onSelect(selType,nameInput.trim());}} disabled={!nameInput.trim()}
             style={{flex:2,padding:'11px',background:nameInput.trim()?'#1e3a5f':'#cbd5e1',border:'none',borderRadius:'10px',fontSize:'14px',color:'white',fontWeight:'700',cursor:nameInput.trim()?'pointer':'default'}}>시작하기</button>
         </div>
       </div>}
@@ -13425,7 +13494,15 @@ function LoginScreen({onLogin,academyName,academyType,accounts,teachers,onTypeRe
     }
   };
   const inp2={width:'100%',padding:'10px 14px',border:'1px solid #e2e8f0',borderRadius:'10px',fontSize:'14px',outline:'none',boxSizing:'border-box',marginTop:'4px'};
-  const typeIconMap={piano:'🎹',math:'📐',english:'🔤',korean:'📖',taekwondo:'🥋',art:'🎨',custom:'🏫'};
+  const typeIconMap={
+    piano:'🎹',violin:'🎻',guitar:'🎸',vocal:'🎤',drum:'🥁',music_etc:'🎼',
+    art:'🖌️',ballet:'💃',drama:'🎭',craft:'🏺',
+    taekwondo:'🥋',swimming:'🏊',ball:'⚽',gym:'🤸',badminton:'🏸',
+    english:'🔤',chinese:'🀄',japanese:'🌸',lang_etc:'💬',
+    korean:'📖',essay:'✍️',reading:'📚',hanja:'📜',
+    math:'📐',science:'🔬',coding:'💻',stem_etc:'🔢',
+    custom:'🏫'
+  };
   const typeIcon=typeIconMap[academyType]||'🏫';
   return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#1e3a5f 0%,#152d4a 100%)'}}>
     <div style={{position:'relative',background:'white',borderRadius:'24px',padding:'48px 40px',width:'360px',boxShadow:'0 24px 80px rgba(0,0,0,0.3)',textAlign:'center'}}>
