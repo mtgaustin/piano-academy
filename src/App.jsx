@@ -13433,13 +13433,14 @@ function LoginScreen({onLogin,academyName,accounts,teachers,onTypeReset}){
       <div style={{fontSize:'48px',marginBottom:'12px'}}>{typeIcon}</div>
       <h1 style={{fontSize:'20px',fontWeight:'800',color:'#1e3a5f',marginBottom:'4px'}}>{academyName||'내 학원'}</h1>
       <p style={{fontSize:'13px',color:'#64748b',marginBottom:'20px'}}>학원 관리 시스템</p>
-      {isBlank&&<div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'12px',padding:'12px 14px',marginBottom:'20px',textAlign:'left'}}>
-        <p style={{fontSize:'11px',fontWeight:'700',color:'#1e40af',marginBottom:'6px'}}>🔑 데모 체험 계정</p>
+      <div style={{background:isBlank?'#eff6ff':'#f8fafc',border:`1px solid ${isBlank?'#bfdbfe':'#e2e8f0'}`,borderRadius:'12px',padding:'12px 14px',marginBottom:'20px',textAlign:'left'}}>
+        <p style={{fontSize:'11px',fontWeight:'700',color:isBlank?'#1e40af':'#475569',marginBottom:'6px'}}>{isBlank?'🔑 데모 체험 계정':'🔑 로그인 계정 안내'}</p>
         <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
-          <p style={{fontSize:'11px',color:'#1e3a5f'}}><span style={{fontWeight:'700'}}>원장</span>&nbsp; ID: <code style={{background:'#dbeafe',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>director</code> &nbsp;PW: <code style={{background:'#dbeafe',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>1234</code></p>
-          <p style={{fontSize:'11px',color:'#1e3a5f'}}><span style={{fontWeight:'700'}}>강사</span>&nbsp; ID: 강사 이름 &nbsp;PW: <code style={{background:'#dbeafe',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>0000</code></p>
+          <p style={{fontSize:'11px',color:'#1e3a5f'}}><span style={{fontWeight:'700'}}>원장</span>&nbsp; ID: <code style={{background:isBlank?'#dbeafe':'#f1f5f9',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>{(accounts&&accounts.director&&accounts.director.id)||'director'}</code> &nbsp;PW: <code style={{background:isBlank?'#dbeafe':'#f1f5f9',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>{(accounts&&accounts.director&&accounts.director.pw)||'1234'}</code></p>
+          <p style={{fontSize:'11px',color:'#1e3a5f'}}><span style={{fontWeight:'700'}}>강사</span>&nbsp; ID: 강사 이름 &nbsp;PW: <code style={{background:isBlank?'#dbeafe':'#f1f5f9',padding:'1px 5px',borderRadius:'4px',fontSize:'11px'}}>0000</code></p>
         </div>
-      </div>}
+        {!isBlank&&<p style={{fontSize:'10px',color:'#94a3b8',marginTop:'6px'}}>설정 → 원장 계정에서 변경 가능</p>}
+      </div>
       {step==='role'&&<>
         <p style={{fontSize:'13px',color:'#475569',fontWeight:'600',marginBottom:'16px'}}>로그인 유형을 선택하세요</p>
         <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
@@ -13463,8 +13464,9 @@ function LoginScreen({onLogin,academyName,accounts,teachers,onTypeReset}){
         <button onClick={login} style={{width:'100%',padding:'13px',background:'#1e3a5f',color:'white',border:'none',borderRadius:'12px',fontSize:'15px',fontWeight:'700',cursor:'pointer',marginBottom:'12px'}}>로그인</button>
         <button onClick={()=>{setStep('role');setId('');setPw('');setErr('');}} style={{fontSize:'13px',color:'#94a3b8',background:'none',border:'none',cursor:'pointer'}}>← 뒤로</button>
       </>}
-      {isBlank&&onTypeReset&&<div style={{marginTop:'20px',paddingTop:'16px',borderTop:'1px solid #e2e8f0'}}>
+      {onTypeReset&&<div style={{marginTop:'20px',paddingTop:'16px',borderTop:'1px solid #e2e8f0',display:'flex',flexDirection:'column',gap:'8px'}}>
         <button onClick={onTypeReset} style={{fontSize:'12px',color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'8px',padding:'7px 14px',cursor:'pointer',width:'100%'}}>🔄 학원 유형 변경</button>
+        {isBlank&&<button onClick={()=>{if(!confirm('모든 데모 데이터를 초기화하시겠습니까?\n입력한 학생·수입·지출 등 모든 데이터가 삭제됩니다.'))return;Object.keys(localStorage).filter(k=>k.startsWith('blank_')).forEach(k=>localStorage.removeItem(k));window.location.reload();}} style={{fontSize:'12px',color:'#ef4444',background:'#fff5f5',border:'1px solid #fecaca',borderRadius:'8px',padding:'7px 14px',cursor:'pointer',width:'100%'}}>🗑️ 데이터 초기화 (처음부터 다시)</button>}
       </div>}
     </div>
   </div>;
