@@ -13344,8 +13344,10 @@ function TypeSelectScreen({onSelect}){
     {key:'taekwondo',icon:'🥋',label:'태권도·무도'},
     {key:'art',   icon:'🎨', label:'미술'},
   ];
-  const[showCustomInput,setShowCustomInput]=useState(false);
-  const[customName,setCustomName]=useState('');
+  const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
+  const[selectedType,setSelectedType]=useState(null);
+  const[nameInput,setNameInput]=useState('');
+  const selectType=key=>{setSelectedType(key);setNameInput(nameMap[key]||'');};
   useEffect(()=>{
     if(BLANK_TYPE&&BLANK_TYPE_SUBJECTS[BLANK_TYPE])onSelect(BLANK_TYPE);
   },[]);
@@ -13357,40 +13359,43 @@ function TypeSelectScreen({onSelect}){
         <h1 style={{fontSize:'22px',fontWeight:'800',color:'#1e293b',margin:'0 0 8px'}}>학원 유형을 선택하세요</h1>
         <p style={{fontSize:'14px',color:'#64748b',margin:0}}>선택한 유형에 맞게 과정·수업 기본값이 자동 설정됩니다</p>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'16px'}}>
-        {types.map(t=><button key={t.key} onClick={()=>onSelect(t.key)}
-          style={{padding:'20px 16px',background:'white',border:'2px solid #e2e8f0',borderRadius:'16px',cursor:'pointer',textAlign:'center',transition:'all 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor='#1e3a5f';e.currentTarget.style.boxShadow='0 4px 12px rgba(30,58,95,0.15)';}}
-          onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';}}>
-          <div style={{fontSize:'28px',marginBottom:'6px'}}>{t.icon}</div>
-          <div style={{fontSize:'14px',fontWeight:'700',color:'#1e293b'}}>{t.label}</div>
-        </button>)}
-      </div>
-      {!showCustomInput
-        ?<button onClick={()=>setShowCustomInput(true)}
+      {!selectedType?<>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'16px'}}>
+          {types.map(t=><button key={t.key} onClick={()=>selectType(t.key)}
+            style={{padding:'20px 16px',background:'white',border:'2px solid #e2e8f0',borderRadius:'16px',cursor:'pointer',textAlign:'center',transition:'all 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor='#1e3a5f';e.currentTarget.style.boxShadow='0 4px 12px rgba(30,58,95,0.15)';}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';}}>
+            <div style={{fontSize:'28px',marginBottom:'6px'}}>{t.icon}</div>
+            <div style={{fontSize:'14px',fontWeight:'700',color:'#1e293b'}}>{t.label}</div>
+          </button>)}
+        </div>
+        <button onClick={()=>selectType('custom')}
           style={{width:'100%',padding:'14px',background:'white',border:'2px dashed #cbd5e1',borderRadius:'12px',cursor:'pointer',fontSize:'14px',color:'#64748b',fontWeight:'600',transition:'all 0.15s'}}
           onMouseEnter={e=>{e.currentTarget.style.borderColor='#94a3b8';e.currentTarget.style.color='#475569';}}
           onMouseLeave={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.color='#64748b';}}>
           ✏️ &nbsp;기타 (직접 설정)
         </button>
-        :<div style={{background:'white',border:'2px solid #1e3a5f',borderRadius:'12px',padding:'16px'}}>
-          <p style={{fontSize:'13px',fontWeight:'700',color:'#1e293b',margin:'0 0 10px'}}>학원명을 입력하세요</p>
-          <input
-            autoFocus
-            value={customName}
-            onChange={e=>setCustomName(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&customName.trim()&&onSelect('custom',customName.trim())}
-            placeholder="예) 우리 태권도 학원"
-            style={{width:'100%',padding:'10px 12px',border:'1px solid #e2e8f0',borderRadius:'8px',fontSize:'14px',outline:'none',boxSizing:'border-box',marginBottom:'10px'}}/>
-          <div style={{display:'flex',gap:'8px'}}>
-            <button onClick={()=>setShowCustomInput(false)}
-              style={{flex:1,padding:'10px',background:'#f1f5f9',border:'none',borderRadius:'8px',fontSize:'13px',color:'#64748b',fontWeight:'600',cursor:'pointer'}}>취소</button>
-            <button onClick={()=>{if(customName.trim())onSelect('custom',customName.trim());}}
-              disabled={!customName.trim()}
-              style={{flex:2,padding:'10px',background:customName.trim()?'#1e3a5f':'#cbd5e1',border:'none',borderRadius:'8px',fontSize:'13px',color:'white',fontWeight:'700',cursor:customName.trim()?'pointer':'default'}}>시작하기</button>
-          </div>
+      </>
+      :<div style={{background:'white',border:'2px solid #1e3a5f',borderRadius:'16px',padding:'20px'}}>
+        <p style={{fontSize:'13px',color:'#64748b',margin:'0 0 4px'}}>
+          {types.find(t=>t.key===selectedType)?.icon||'✏️'} {types.find(t=>t.key===selectedType)?.label||'기타'} 선택됨
+        </p>
+        <p style={{fontSize:'15px',fontWeight:'800',color:'#1e293b',margin:'0 0 14px'}}>학원명을 입력하세요</p>
+        <input
+          autoFocus
+          value={nameInput}
+          onChange={e=>setNameInput(e.target.value)}
+          onKeyDown={e=>e.key==='Enter'&&nameInput.trim()&&onSelect(selectedType,nameInput.trim())}
+          placeholder="예) 우리 피아노 학원"
+          style={{width:'100%',padding:'11px 13px',border:'1px solid #cbd5e1',borderRadius:'10px',fontSize:'15px',outline:'none',boxSizing:'border-box',marginBottom:'12px'}}/>
+        <div style={{display:'flex',gap:'8px'}}>
+          <button onClick={()=>setSelectedType(null)}
+            style={{flex:1,padding:'11px',background:'#f1f5f9',border:'none',borderRadius:'10px',fontSize:'13px',color:'#64748b',fontWeight:'600',cursor:'pointer'}}>← 뒤로</button>
+          <button onClick={()=>{if(nameInput.trim())onSelect(selectedType,nameInput.trim());}}
+            disabled={!nameInput.trim()}
+            style={{flex:2,padding:'11px',background:nameInput.trim()?'#1e3a5f':'#cbd5e1',border:'none',borderRadius:'10px',fontSize:'14px',color:'white',fontWeight:'700',cursor:nameInput.trim()?'pointer':'default'}}>시작하기</button>
         </div>
-      }
+      </div>}
       <p style={{textAlign:'center',fontSize:'12px',color:'#94a3b8',marginTop:'20px'}}>과정·수업명은 나중에 언제든지 변경할 수 있습니다</p>
     </div>
   </div>;
