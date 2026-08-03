@@ -14056,6 +14056,7 @@ export default function App(){
   const[loggedInTeacherId,setLoggedInTeacherId]=useState(null);
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
+  const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
   // ── Supabase Auth 상태 ──────────────────────────────────────────────────────
   const[supabaseSession,setSupabaseSession]=useState(null);
   const[authChecked,setAuthChecked]=useState(isBlank); // blank 모드는 auth 불필요
@@ -14214,14 +14215,16 @@ export default function App(){
   if(!authChecked)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#1e3a5f 0%,#152d4a 100%)'}}><div style={{color:'white',fontSize:'16px',fontWeight:'600'}}>⏳ 연결 중...</div></div>;
   // 실서비스 모드: Supabase Auth 미로그인 시 학원 계정 화면
   if(!isBlank&&!supabaseSession)return<AcademyAuthScreen onAuth={session=>{setSupabaseSession(session);setAcademyId(session.user.id);setAccounts(prev=>({...prev,academyId:session.user.id}));}}/>;
-  // blank 모드: 학원 유형 미선택 시 유형 선택 화면 먼저 표시
-  if(isBlank&&courseTypes.length===0)return<TypeSelectScreen onSelect={(type,customAcademyName)=>{
+  // 학원 유형 미선택 시 유형 선택 화면 표시 (blank: courseTypes 비어있을 때 / 정식: typeConfigured 아직 false일 때)
+  const needsTypeSelect=isBlank?courseTypes.length===0:!typeConfigured;
+  if(needsTypeSelect)return<TypeSelectScreen onSelect={(type,customAcademyName)=>{
     const subjects=BLANK_TYPE_SUBJECTS[type]||DEFAULT_SUBJECTS;
     setCourseTypes(subjects);
     const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
     setAcademyName(customAcademyName||nameMap[type]||'내 학원');
+    if(!isBlank)setTypeConfigured(true);
   }}/>;
-  if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):undefined}/>;
+  if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):()=>setTypeConfigured(false)}/>;
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
     {pinModalOpen&&<AccountChangeModal accounts={accounts} setAccounts={setAccounts} onClose={()=>setPinModalOpen(false)}/>}
     {/* 모바일 사이드바 열릴 때 뒤 어두운 오버레이 */}
