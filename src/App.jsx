@@ -13568,6 +13568,53 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
     a.href=url;a.download=`학원데이터_${academyName||'backup'}_${dateStr}.json`;
     a.click();URL.revokeObjectURL(url);
   };
+  const exportExcel=()=>{
+    const dateStr=today().replace(/-/g,'');
+    const acName=academyName||'학원';
+    const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const cell=(v,isNum)=>`<Cell${isNum?'':''}>` +
+      `<Data ss:Type="${(isNum&&v!==''&&!isNaN(Number(v)))?'Number':'String'}">${esc(v)}</Data></Cell>`;
+    const hcell=v=>`<Cell ss:StyleID="h"><Data ss:Type="String">${esc(v)}</Data></Cell>`;
+    const sheet=(name,headers,rows)=>{
+      const hRow=`<Row>${headers.map(hcell).join('')}</Row>`;
+      const dRows=rows.map(r=>`<Row>${r.map((v,i)=>cell(v,typeof headers[i]==='string'&&(headers[i].includes('금액')||headers[i].includes('급여')||headers[i].includes('수강료')||headers[i].includes('개월')))).join('')}</Row>`).join('');
+      return`<Worksheet ss:Name="${esc(name)}"><Table ss:DefaultColumnWidth="80">${hRow}${dRows}</Table></Worksheet>`;
+    };
+    const d=allData;
+    const arr=x=>Array.isArray(x)?x:[];
+    const join=x=>Array.isArray(x)?x.join(', '):(x||'');
+    const sheets=[
+      sheet('학생',['이름','학년','수강반','연락처','등록일','상태','메모'],
+        arr(d.students).map(s=>[s.name,s.grade,join(s.classes),s.phone||'',s.joinDate||'',s.status==='active'?'재원':'퇴원',s.note||''])),
+      sheet('강사',['이름','담당과목','연락처','계약시작','계약종료','급여','상태'],
+        arr(d.teachers).filter(t=>t.status!=='resigned').map(t=>[t.name,join(t.subjects),t.phone||'',t.contractStart||'',t.contractEnd||'',Number(t.salary||0),t.status==='active'?'재직':'기타'])),
+      sheet('수업·과정',['과정명'],
+        arr(d.classes).map(c=>[c.name||c])),
+      sheet('수입',['날짜','항목','금액','결제수단','메모'],
+        arr(d.income).map(i=>[i.date||'',i.item||i.category||'',Number(i.amount||0),i.method||'',i.note||''])),
+      sheet('지출',['날짜','항목','금액','결제수단','메모'],
+        arr(d.expenses).map(e=>[e.date||'',e.item||e.category||'',Number(e.amount||0),e.method||'',e.note||''])),
+      sheet('수강료',['학생','수강반','금액','납부기한','납부일','상태'],
+        arr(d.tuitions).map(t=>[t.studentName||'',join(t.classes),Number(t.fee||0),t.dueDate||'',t.paidDate||'',t.status==='paid'?'납부완료':'미납'])),
+      sheet('출결',['날짜','강사','상태','사유','메모'],
+        arr(d.attendance).map(a=>[a.date||'',a.teacherName||'',a.status||'',a.reason||'',a.note||''])),
+      sheet('상담',['날짜','이름','연락처','학년','관심수업','유입경로','상태','체험일','등록일','메모'],
+        arr(d.consultations).map(c=>[c.date||'',c.name||'',c.phone||'',c.grade||'',c.interestedClass||'',c.source||'',c.status||'',c.trialDate||'',c.registerDate||'',c.note||''])),
+      sheet('공지',['날짜','분류','제목','내용','대상','중요'],
+        arr(d.notices).map(n=>[n.date||'',n.category||'',n.title||'',n.content||'',n.target||'',n.important?'Y':'N'])),
+      sheet('퇴원',['학생','학년','수강반','등록일','퇴원일','사유','재원기간(개월)','메모'],
+        arr(d.withdrawals).map(w=>[w.studentName||'',w.grade||'',join(w.classes),w.joinDate||'',w.withdrawDate||'',w.reason||'',Number(w.stayMonths||0),w.note||''])),
+    ];
+    const xml=`<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>`+
+      `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`+
+      `<Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1E3A5F" ss:Pattern="Solid"/></Style></Styles>`+
+      sheets.join('')+`</Workbook>`;
+    const blob=new Blob(['﻿'+xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`${acName}_데이터내보내기_${dateStr}.xls`;
+    a.click();URL.revokeObjectURL(url);
+  };
   const importData=()=>{
     setImportErr('');
     try{
@@ -13669,8 +13716,12 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
     {tab==='data'&&<div className="space-y-6 max-w-2xl">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h3 className="font-bold text-slate-900 mb-2">데이터 내보내기 (백업)</h3>
-        <p className="text-sm text-slate-600 mb-4">현재 학원의 모든 데이터를 JSON 파일로 저장합니다. 다른 기기나 브라우저에서 동일한 데이터를 사용할 때 이 파일을 가져오기 하세요.</p>
-        <button className={btn('indigo')} onClick={exportData}>💾 데이터 내보내기 (.json)</button>
+        <p className="text-sm text-slate-600 mb-4">현재 학원의 모든 데이터를 파일로 저장합니다.</p>
+        <div className="flex flex-wrap gap-3">
+          <button className={btn('green')} onClick={exportExcel}>📊 Excel로 내보내기 (.xls)</button>
+          <button className={btn('indigo')} onClick={exportData}>💾 JSON 백업 (.json)</button>
+        </div>
+        <p className="text-xs text-slate-400 mt-3">Excel: 학생·강사·수입·지출·수강료 등 시트별로 분리 저장 — 다른 프로그램으로 이전 가능<br/>JSON: 이 시스템에 다시 복원하거나 다른 기기로 이전할 때 사용</p>
       </div>
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h3 className="font-bold text-slate-900 mb-2">데이터 가져오기 (복원/동기화)</h3>
