@@ -13400,7 +13400,7 @@ function TypeSelectScreen({onSelect}){
     </div>
   </div>;
 }
-function LoginScreen({onLogin,academyName,accounts,teachers,onTypeReset}){
+function LoginScreen({onLogin,academyName,academyType,accounts,teachers,onTypeReset}){
   const[step,setStep]=useState('role');
   const[role,setRole]=useState(null);
   const[id,setId]=useState('');
@@ -13425,8 +13425,8 @@ function LoginScreen({onLogin,academyName,accounts,teachers,onTypeReset}){
     }
   };
   const inp2={width:'100%',padding:'10px 14px',border:'1px solid #e2e8f0',borderRadius:'10px',fontSize:'14px',outline:'none',boxSizing:'border-box',marginTop:'4px'};
-  const n=academyName||'';
-  const typeIcon=n.includes('수학')?'📐':n.includes('영어')?'🔤':n.includes('국어')||n.includes('논술')?'📖':n.includes('태권도')||n.includes('무도')?'🥋':n.includes('미술')?'🎨':'🎹';
+  const typeIconMap={piano:'🎹',math:'📐',english:'🔤',korean:'📖',taekwondo:'🥋',art:'🎨',custom:'🏫'};
+  const typeIcon=typeIconMap[academyType]||'🏫';
   return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#1e3a5f 0%,#152d4a 100%)'}}>
     <div style={{position:'relative',background:'white',borderRadius:'24px',padding:'48px 40px',width:'360px',boxShadow:'0 24px 80px rgba(0,0,0,0.3)',textAlign:'center'}}>
       {isBlank&&<div style={{position:'absolute',top:'16px',right:'16px',background:'#f59e0b',color:'white',fontSize:'10px',fontWeight:'800',padding:'3px 10px',borderRadius:'20px',letterSpacing:'0.05em'}}>DEMO</div>}
@@ -14061,6 +14061,7 @@ export default function App(){
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
   const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
+  const[academyType,setAcademyType]=useLS('hm_academy_type','piano');
   // ── Supabase Auth 상태 ──────────────────────────────────────────────────────
   const[supabaseSession,setSupabaseSession]=useState(null);
   const[authChecked,setAuthChecked]=useState(isBlank); // blank 모드는 auth 불필요
@@ -14226,9 +14227,10 @@ export default function App(){
     setCourseTypes(subjects);
     const nameMap={piano:'하모니 피아노 학원',math:'하모니 수학학원',english:'하모니 영어학원',korean:'하모니 국어논술학원',taekwondo:'하모니 태권도학원',art:'하모니 미술학원'};
     setAcademyName(customAcademyName||nameMap[type]||'내 학원');
+    setAcademyType(type);
     if(!isBlank)setTypeConfigured(true);
   }}/>;
-  if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):()=>setTypeConfigured(false)}/>;
+  if(!role)return<LoginScreen onLogin={(r,tid)=>{setRole(r);setLoggedInTeacherId(tid||null);}} academyName={academyName} academyType={academyType} accounts={accounts} teachers={teachers} onTypeReset={isBlank?()=>setCourseTypes([]):()=>setTypeConfigured(false)}/>;
   return<div className="flex" style={{height:'100vh',overflow:'hidden'}}>
     {pinModalOpen&&<AccountChangeModal accounts={accounts} setAccounts={setAccounts} onClose={()=>setPinModalOpen(false)}/>}
     {/* 모바일 사이드바 열릴 때 뒤 어두운 오버레이 */}
