@@ -8746,7 +8746,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
   const[inactiveTarget,setInactiveTarget]=useState(null);
   const[inactiveForm,setInactiveForm]=useState({reason:'vacation',startDate:'',endDate:'',note:''});
   const inactiveReasonOpts=[{val:'halfday',label:'반차',attStatus:'halfday'},{val:'vacation',label:'휴가',attStatus:'vacation'},{val:'sick',label:'병가',attStatus:'sick'},{val:'training',label:'교육/연수',attStatus:'training'},{val:'other',label:'기타',attStatus:'other'}];
-  const emptyForm={name:'',subjects:[],phone:'',email:'',contractStart:'',contractEnd:'',salary:'',dependents:1,status:'active',note:'',edu:{bachUniv:'',bachMajor:'',mastUniv:'',mastMajor:'',phdUniv:'',phdMajor:''},career:[],attachments:[]};
+  const emptyForm={name:'',subjects:[],phone:'',email:'',contractStart:'',contractEnd:'',salary:'',dependents:1,employmentType:'employee',withholdingRate:100,childrenAge8to20:0,status:'active',note:'',edu:{bachUniv:'',bachMajor:'',mastUniv:'',mastMajor:'',phdUniv:'',phdMajor:''},career:[],attachments:[]};
   const[form,setForm]=useState(emptyForm);
   const emptyCareer={org:'',role:'',startDate:'',endDate:''};
   const[careerForm,setCareerForm]=useState(emptyCareer);
@@ -8767,7 +8767,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
   const setEdu=k=>e=>setForm(f=>({...f,edu:{...f.edu,[k]:e.target.value}}));
   const toggleSubject=s=>setForm(f=>({...f,subjects:(f.subjects||[]).includes(s)?f.subjects.filter(x=>x!==s):[...(f.subjects||[]),s]}));
   const openAdd=()=>{setEditTarget(null);setForm({...emptyForm,contractStart:today()});setCareerForm(emptyCareer);setModalOpen(true);};
-  const openEdit=t=>{setEditTarget(t);setForm({...t,subjects:t.subjects||[],dependents:t.dependents||1,edu:t.edu||{bachUniv:'',bachMajor:'',mastUniv:'',mastMajor:'',phdUniv:'',phdMajor:''},career:t.career||[],attachments:t.attachments||[]});setCareerForm(emptyCareer);setModalOpen(true);};
+  const openEdit=t=>{setEditTarget(t);setForm({...t,subjects:t.subjects||[],dependents:t.dependents||1,employmentType:t.employmentType||'employee',withholdingRate:t.withholdingRate||100,childrenAge8to20:t.childrenAge8to20||0,edu:t.edu||{bachUniv:'',bachMajor:'',mastUniv:'',mastMajor:'',phdUniv:'',phdMajor:''},career:t.career||[],attachments:t.attachments||[]});setCareerForm(emptyCareer);setModalOpen(true);};
   const addCareer=()=>{
     if(!careerForm.org||!careerForm.startDate){alert('근무 기관명과 시작일은 필수입니다.');return;}
     setForm(f=>({...f,career:[...(f.career||[]),careerForm]}));
@@ -8929,7 +8929,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
             <td className="px-3 py-3 text-slate-700">{t.phone}</td>
             <td className="px-3 py-3 text-slate-600 text-xs">{t.email||'-'}</td>
             <td className="px-3 py-3 text-slate-600 text-xs">{fDate(t.contractStart)} ~<br/>{fDate(t.contractEnd)}</td>
-            <td className="px-3 py-3 font-semibold text-slate-900">{fWon(t.salary)}</td>
+            <td className="px-3 py-3"><div className="font-semibold text-slate-900">{fWon(t.salary)}</div><div className="text-xs mt-0.5">{(t.employmentType||'employee')==='freelancer'?<span className="text-purple-600 font-medium">프리랜서 3.3%</span>:<span className="text-blue-600">{`근로자 ${t.withholdingRate&&t.withholdingRate!==100?t.withholdingRate+'%':''}`}</span>}</div></td>
             <td className="px-3 py-3">{(()=>{const expired=isContractExpired(t);const eff=expired?'inactive':t.status;return<><span className={`badge ${sColor(eff)}`}>{eff==='active'?'활동중':'비활동'}</span>{expired&&<div className="text-xs text-red-400 mt-0.5">계약종료</div>}</>;})()}</td>
             <td className="px-3 py-3">
               <div className="flex gap-1">
@@ -8979,12 +8979,51 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
         <Field label="계약 시작일" required><input className={inp} type="date" value={form.contractStart} onChange={e=>{const s=e.target.value;let autoEnd='';if(s){const d=new Date(s);d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);autoEnd=d.toISOString().split('T')[0];}setForm({...form,contractStart:s,contractEnd:form.contractEnd||autoEnd});}}/></Field>
         <Field label="계약 종료일"><div className="flex gap-2 items-center"><input className={inp} type="date" value={form.contractEnd} onChange={e=>setForm({...form,contractEnd:e.target.value})}/><button type="button" onClick={()=>{if(!form.contractStart)return;const d=new Date(form.contractStart);d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);setForm({...form,contractEnd:d.toISOString().split('T')[0]});}} className="text-xs px-2 py-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 shrink-0 whitespace-nowrap">+1년 자동</button></div><p className="text-xs text-slate-400 mt-1">계약 시작일을 입력하면 종료일이 자동으로 계산됩니다 (1년 단위 갱신)</p></Field>
         <Field label="월 급여 (원, 만원 단위)" required><WonInput value={form.salary} onChange={v=>setForm({...form,salary:v})}/></Field>
-        <Field label="부양가족수 (본인 포함, 급여명세서 소득세 계산용)" required>
+        <Field label="부양가족수 (본인 포함, 소득세 계산용)" required>
           <select className={inp} value={form.dependents||1} onChange={e=>setForm({...form,dependents:Number(e.target.value)})}>
             {Array.from({length:11},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}명{n===1?' (본인만)':''}</option>)}
           </select>
         </Field>
         <Field label="상태"><select className={inp} value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option value="active">활동중</option><option value="inactive">비활동</option></select></Field>
+      </div>
+      {/* ── 원천징수 설정 ──────────────────────────────── */}
+      <div className="border border-blue-100 bg-blue-50 rounded-xl p-4 mt-2">
+        <div className="text-sm font-bold text-blue-800 mb-3">💼 원천징수 설정</div>
+        <div className="grid grid-cols-2 gap-x-4">
+          <Field label="고용 형태" required>
+            <div className="flex gap-4 mt-1">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="empType" value="employee" checked={(form.employmentType||'employee')==='employee'} onChange={()=>setForm({...form,employmentType:'employee'})}/>
+                <span className="text-sm font-medium text-slate-700">근로자</span>
+                <span className="text-xs text-slate-500">(4대보험+간이세액표)</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="radio" name="empType" value="freelancer" checked={(form.employmentType||'employee')==='freelancer'} onChange={()=>setForm({...form,employmentType:'freelancer'})}/>
+                <span className="text-sm font-medium text-slate-700">프리랜서</span>
+                <span className="text-xs text-slate-500">(3.3% 원천징수)</span>
+              </label>
+            </div>
+          </Field>
+          {(form.employmentType||'employee')==='employee'&&<>
+            <Field label="원천징수 비율">
+              <select className={inp} value={form.withholdingRate||100} onChange={e=>setForm({...form,withholdingRate:Number(e.target.value)})}>
+                <option value={80}>80% — 매달 세금 적게 (연말 추가납부 가능)</option>
+                <option value={100}>100% — 기본값 (권장)</option>
+                <option value={120}>120% — 매달 세금 더 냄 (연말 환급 가능)</option>
+              </select>
+            </Field>
+            <Field label="8~20세 자녀 수 (자녀세액공제)">
+              <select className={inp} value={form.childrenAge8to20||0} onChange={e=>setForm({...form,childrenAge8to20:Number(e.target.value)})}>
+                <option value={0}>0명 (없음)</option>
+                <option value={1}>1명 (월 20,830원 공제)</option>
+                <option value={2}>2명 (월 45,830원 공제)</option>
+                <option value={3}>3명 이상 (월 79,160원+ 공제)</option>
+              </select>
+            </Field>
+          </>}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4">
       </div>
       <Field label="담당 과정 (복수 선택 가능)" required>
         <div className="flex flex-wrap gap-2 mb-2">
@@ -12703,30 +12742,35 @@ function WithdrawalManagement({withdrawals,setWithdrawals}){
 // ⚠️ 한 가지만 단순화: "8~20세 자녀 세액공제"는 자녀의 나이 정보가 시스템에 없어 반영하지
 //    않음(보통 자녀 1인당 월 1만원 안팎 차이). 정확한 금액이 필요하면 홈택스 간이세액표로
 //    최종 대조 확인을 권장.
-function calcWithholdingTax(monthlySalary,dependents){
+// 근로소득 간이세액표 기반 소득세 계산 (소득세법 시행령 별표2, 2026년 3월 개정 반영)
+// childrenAge8to20: 8세이상 20세이하 자녀 수 (자녀세액공제)
+// withholdingRate: 80|100|120 (원천징수 비율 선택)
+function calcWithholdingTax(monthlySalary,dependents,childrenAge8to20,withholdingRate){
   const m=Number(monthlySalary)||0;
   const dep=Math.max(1,Number(dependents)||1); // 본인 포함 최소 1명
   if(m<=0)return 0;
   const annual=m*12; // 1) 연간 총급여액으로 환산
 
-  // 2) 근로소득공제 (소득세법 §47)
+  // 2) 근로소득공제 (소득세법 §47, 한도 2,000만원)
   let earnedDeduction;
   if(annual<=5000000)earnedDeduction=annual*0.7;
   else if(annual<=15000000)earnedDeduction=3500000+(annual-5000000)*0.4;
   else if(annual<=45000000)earnedDeduction=7500000+(annual-15000000)*0.15;
   else if(annual<=100000000)earnedDeduction=12000000+(annual-45000000)*0.05;
   else earnedDeduction=14750000+(annual-100000000)*0.02;
+  earnedDeduction=Math.min(earnedDeduction,20000000); // 한도 2,000만원
   const earnedIncome=Math.max(0,annual-earnedDeduction);
 
-  // 3) 인적공제: 기본공제(본인+부양가족 1인당 150만원) + 간이세액표 고시상 "특별소득공제 등" 근사 반영분
+  // 3) 인적공제: 기본공제(본인+부양가족 1인당 150만원)
+  //    + 특별소득공제 등 근사분 (국민연금·건강보험·고용보험 실납부액 반영 근사치)
   const basicDeduction=dep*1500000;
   let extra;
   if(dep===1)extra=3100000+annual*0.04;
   else if(dep===2)extra=3600000+annual*0.04;
-  else extra=5000000+annual*0.07; // 3명 이상은 동일 공식(가족수 차이는 위 기본공제에서 이미 반영됨)
+  else extra=5000000+annual*0.07;
   const taxBase=Math.max(0,earnedIncome-basicDeduction-extra);
 
-  // 4) 산출세액 (소득세법 §55 기본세율 6~45%, TaxManagement의 calcIncomeTax와 동일한 누진표)
+  // 4) 산출세액 (소득세법 §55, 2026년 기준: 1,400만원 이하 6% 구간 적용)
   const brackets=[
     {limit:14000000,rate:0.06,ded:0},
     {limit:50000000,rate:0.15,ded:1260000},
@@ -12740,15 +12784,27 @@ function calcWithholdingTax(monthlySalary,dependents){
   let calculatedTax=0;
   for(const b of brackets){if(taxBase<=b.limit){calculatedTax=Math.max(0,taxBase*b.rate-b.ded);break;}}
 
-  // 5) 근로소득세액공제 (소득세법 §59) — 산출세액을 한 번 더 깎아주는 세액공제, 한도 있음
+  // 5) 근로소득세액공제 (소득세법 §59)
   let taxCredit=calculatedTax<=1300000?calculatedTax*0.55:715000+(calculatedTax-1300000)*0.30;
   let creditLimit=740000;
   if(annual>33000000&&annual<=70000000)creditLimit=Math.max(660000,740000-Math.floor((annual-33000000)/1000000)*8000);
   else if(annual>70000000)creditLimit=Math.max(500000,660000-Math.floor((annual-70000000)/1000000)*5000);
   taxCredit=Math.min(taxCredit,creditLimit);
 
-  const annualTax=Math.max(0,calculatedTax-taxCredit);
-  return Math.floor(annualTax/12/10)*10; // 월 단위로 환산 후 10원 단위 절사
+  let annualTax=Math.max(0,calculatedTax-taxCredit);
+  let monthlyTax=Math.floor(annualTax/12/10)*10; // 월 환산, 10원 단위 절사
+
+  // 6) 자녀세액공제 차감 (2026년 3월 개정 — 8세이상 20세이하 자녀 수)
+  //    1명: 월 20,830원 / 2명: 월 45,830원 / 3명이상: +33,330원/명
+  const ch=Number(childrenAge8to20)||0;
+  if(ch>0){
+    let childCredit=ch===1?20830:ch===2?45830:45830+(ch-2)*33330;
+    monthlyTax=Math.max(0,monthlyTax-childCredit);
+  }
+
+  // 7) 원천징수 비율 적용 (80% / 100% / 120%)
+  const rate=Number(withholdingRate)||100;
+  return Math.floor(monthlyTax*rate/100/10)*10;
 }
 
 // ── 급여 명세서 ──────────────────────────────────────────────────────────
@@ -12770,18 +12826,34 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
     // 퇴직강사: 퇴직일이 선택월 이상이면 해당 월에 재직했으므로 포함
     return t.resignedAt&&t.resignedAt.slice(0,7)>=month;
   });
-  const calculateTax=(salary,dependents)=>{
-    const gross=salary;
+  // calculateTax(salary, teacher) — teacher 객체에서 고용형태·비율·자녀수 읽음
+  // 두번째 인자가 숫자이면 의존성 수(구버전 호환), 객체이면 강사 정보
+  const calculateTax=(salary,teacherOrDeps)=>{
+    const gross=Number(salary)||0;
+    const isObj=typeof teacherOrDeps==='object'&&teacherOrDeps!==null;
+    const dep=isObj?(teacherOrDeps.dependents||1):(Number(teacherOrDeps)||1);
+    const empType=isObj?(teacherOrDeps.employmentType||'employee'):'employee';
+    const rate=isObj?(teacherOrDeps.withholdingRate||100):100;
+    const children=isObj?(teacherOrDeps.childrenAge8to20||0):0;
+    if(gross<=0)return {pension:0,health:0,longCare:0,employment:0,incomeTax:0,localIncomeTax:0,total:0,employmentType:empType};
+    if(empType==='freelancer'){
+      // 프리랜서: 사업소득세 3% + 지방소득세 0.3% = 3.3%
+      const incomeTax=Math.round(gross*0.03);
+      const localIncomeTax=Math.round(gross*0.003);
+      return {pension:0,health:0,longCare:0,employment:0,incomeTax,localIncomeTax,total:incomeTax+localIncomeTax,employmentType:'freelancer'};
+    }
+    // 근로자: 4대보험 + 간이세액표 소득세 + 지방소득세
     const pension=Math.round(gross*0.045);
     const health=Math.round(gross*0.03545);
+    const longCare=Math.round(health*0.1314); // 장기요양 = 건강보험료 × 13.14%
     const employment=Math.round(gross*0.009);
-    const incomeTax=calcWithholdingTax(gross,dependents);
-    return {pension,health,employment,incomeTax,total:pension+health+employment+incomeTax};
+    const incomeTax=calcWithholdingTax(gross,dep,children,rate);
+    const localIncomeTax=Math.round(incomeTax*0.1);
+    return {pension,health,longCare,employment,incomeTax,localIncomeTax,total:pension+health+longCare+employment+incomeTax+localIncomeTax,employmentType:'employee'};
   };
 
-  const calculateNet=(salary,dependents)=>{
-    const deductions=calculateTax(salary,dependents).total;
-    return salary-deductions;
+  const calculateNet=(salary,teacherOrDeps)=>{
+    return (Number(salary)||0)-calculateTax(salary,teacherOrDeps).total;
   };
 
   // 월중간 합류 강사 일할 계산
@@ -12815,8 +12887,8 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
     proratedDays:teacherSalaryInfo.proratedDays,
     totalDays:teacherSalaryInfo.totalDays,
     baseSalary:teacher.salary,
-    tax:calculateTax(teacherSalaryInfo.salary,teacher.dependents),
-    net:calculateNet(teacherSalaryInfo.salary,teacher.dependents),
+    tax:calculateTax(teacherSalaryInfo.salary,teacher),
+    net:calculateNet(teacherSalaryInfo.salary,teacher),
     period:teacherSalaryInfo.isResignProrated?`${month}-01 ~ ${month}-${String(teacherSalaryInfo.resignedDay).padStart(2,'0')} (퇴직 일할계산)`:teacherSalaryInfo.isProrated&&teacher.contractStart?.startsWith(month)?`${teacher.contractStart} ~ ${month}-${new Date(Number(month.split('-')[0]),Number(month.split('-')[1]),0).getDate()} (입사 일할계산)`:`${month}-01 ~ ${month}-${new Date(Number(month.split('-')[0]),Number(month.split('-')[1]),0).getDate()}`
   }:null;
 
@@ -12826,21 +12898,15 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
       <p className="text-slate-600 text-sm mt-1">강사 월급여 명세서를 자동으로 생성하세요</p>
     </div>
 
-    {/* ℹ️ 관리자 전용 안내 (화면에만 보이고 인쇄 시에는 빠짐) ─ Austin님 결정[d] 반영
-        과거에는 "월급여의 8%"라는 단순 근사치였으나, 이제는 강사관리에 추가한 "부양가족수"
-        값과 국세청 근로소득 간이세액표의 산출 공식(근로소득공제·기본공제·세율·근로소득세액공제,
-        소득세법 시행령 별표 2)을 그대로 계산식으로 옮긴 calcWithholdingTax()로 정확하게 계산함.
-        다만 자녀의 만 나이 정보가 시스템에 없어 "8~20세 자녀 세액공제"(자녀 1인당 월 1만원
-        안팎)는 반영하지 못하므로, 이 점만 안내 배너로 계속 남겨둠. */}
     <div className="no-print bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-start gap-3">
       <span className="text-2xl leading-none">ℹ️</span>
       <div className="text-sm text-blue-800">
-        <div className="font-bold mb-1">소득세 계산 방식 안내</div>
+        <div className="font-bold mb-1">원천징수 계산 안내 (2026년 기준)</div>
         <div className="leading-relaxed">
-          아래 급여 명세서의 <strong>&quot;소득세&quot;</strong>는 강사관리에서 입력한 <strong>부양가족수</strong>와
-          국세청 <strong>근로소득 간이세액표</strong>(소득세법 시행령 별표 2)의 계산 공식을 적용한 값입니다.
-          단, 자녀의 정확한 나이 정보가 없어 <strong>8~20세 자녀 세액공제</strong>(자녀 1인당 월 약 1만원)는 반영되지 않았으니,
-          이 부분이 중요한 강사가 있다면 신고/지급 전 홈택스 &quot;근로소득 간이세액표&quot;로 한 번 더 대조 확인해주세요.
+          <strong>근로자</strong>: 국민연금(4.5%)·건강보험(3.545%)·장기요양(건보료×13.14%)·고용보험(0.9%) + 소득세(간이세액표, 2026년 3월 개정) + 지방소득세(소득세×10%).
+          강사 등록 시 <strong>부양가족수·8~20세 자녀 수·원천징수 비율(80/100/120%)</strong>을 정확히 입력하세요.
+          <br/><strong>프리랜서</strong>: 사업소득세(3%) + 지방소득세(0.3%) = 3.3% 원천징수.
+          <br/>정확한 세액은 지급 전 <a href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=6583&cntntsId=7862" target="_blank" rel="noopener noreferrer" className="underline font-semibold">홈택스 간이세액표</a>로 대조 확인하세요.
         </div>
       </div>
     </div>
@@ -12852,7 +12918,7 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
       </div>
       {!(role==='teacher'&&loggedInTeacherId)&&(()=>{
         const totGross=activeTeachers.reduce((s,t)=>s+calcEffectiveSalary(t,month).salary,0);
-        const totDeduct=activeTeachers.reduce((s,t)=>s+calculateTax(calcEffectiveSalary(t,month).salary,t.dependents).total,0);
+        const totDeduct=activeTeachers.reduce((s,t)=>s+calculateTax(calcEffectiveSalary(t,month).salary,t).total,0);
         const totNet=totGross-totDeduct;
         return<button onClick={()=>setTotalPopupOpen(true)} className={btn('blue')}>
           이달 총 지급액: {fWon(totNet)}
@@ -12864,7 +12930,7 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
       <div className="space-y-3">
         {activeTeachers.map(t=>{
           const eff=calcEffectiveSalary(t,month);
-          const tax=calculateTax(eff.salary,t.dependents);
+          const tax=calculateTax(eff.salary,t);
           const net=eff.salary-tax.total;
           return<div key={t.id} className="flex items-center justify-between p-3 bg-[#f8fafc] rounded-xl">
             <div><div className="font-semibold text-slate-800">{t.name}</div>
@@ -12881,8 +12947,8 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
         <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
           <span className="font-bold text-slate-800">합계 ({activeTeachers.length}명)</span>
           <div className="text-right">
-            <div className="text-lg font-bold text-green-700">{fWon(activeTeachers.reduce((s,t)=>{const eff=calcEffectiveSalary(t,month);return s+eff.salary-calculateTax(eff.salary,t.dependents).total;},0))}</div>
-            <div className="text-xs text-slate-400">총 기본급 {fWon(activeTeachers.reduce((s,t)=>s+calcEffectiveSalary(t,month).salary,0))} · 공제합계 {fWon(activeTeachers.reduce((s,t)=>{const eff=calcEffectiveSalary(t,month);return s+calculateTax(eff.salary,t.dependents).total;},0))}</div>
+            <div className="text-lg font-bold text-green-700">{fWon(activeTeachers.reduce((s,t)=>{const eff=calcEffectiveSalary(t,month);return s+eff.salary-calculateTax(eff.salary,t).total;},0))}</div>
+            <div className="text-xs text-slate-400">총 기본급 {fWon(activeTeachers.reduce((s,t)=>s+calcEffectiveSalary(t,month).salary,0))} · 공제합계 {fWon(activeTeachers.reduce((s,t)=>{const eff=calcEffectiveSalary(t,month);return s+calculateTax(eff.salary,t).total;},0))}</div>
           </div>
         </div>
       </div>
@@ -12909,11 +12975,11 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
             {eff.isProrated&&<div className="flex justify-between text-xs text-slate-400"><span>월 기본급</span><span>{fWon(t.salary)}</span></div>}
             <div className="flex justify-between text-sm">
               <span className="text-slate-600">공제액</span>
-              <span className="font-semibold text-red-600">{fWon(calculateTax(eff.salary,t.dependents).total)}</span>
+              <span className="font-semibold text-red-600">{fWon(calculateTax(eff.salary,t).total)}</span>
             </div>
             <div className="border-t border-slate-200 pt-2 flex justify-between text-sm font-bold">
               <span className="text-slate-900">실수령액</span>
-              <span className="text-green-700">{fWon(calculateNet(eff.salary,t.dependents))}</span>
+              <span className="text-green-700">{fWon(calculateNet(eff.salary,t))}</span>
             </div>
           </div>
           <button onClick={()=>setPrintTeacherId(t.id)} className={btn('blue')} style={{width:'100%',padding:'8px',fontSize:'13px'}}>명세서 보기</button>
@@ -12951,18 +13017,25 @@ function PayslipManagement({teachers,academyName,role,loggedInTeacherId}){
         <tbody>
           {payslip.isProrated&&<tr className="border-t bg-amber-50"><td className="px-3 py-2 text-amber-700 text-xs" colSpan="2">⚠️ 월중간 합류 ({fDate(teacher.contractStart)}) — {payslip.proratedDays}/{payslip.totalDays}일 일할 계산 적용. 월 기본급 {fWon(payslip.baseSalary)}</td></tr>}
           <tr className="border-t"><td className="px-3 py-2 text-slate-900">기본급{payslip.isProrated?` (일할)`:''}</td><td className="px-3 py-2 text-right font-semibold text-slate-900">{fWon(payslip.salary)}</td></tr>
-          <tr className="border-t bg-orange-50"><td colSpan="2" className="px-3 py-2 font-bold text-orange-700">공제 내역</td></tr>
-          <tr><td className="px-3 py-2 text-slate-700 pl-6">국민연금 (4.5%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.pension)}</td></tr>
-          <tr><td className="px-3 py-2 text-slate-700 pl-6">건강보험 (3.545%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.health)}</td></tr>
-          <tr><td className="px-3 py-2 text-slate-700 pl-6">고용보험 (0.9%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.employment)}</td></tr>
-          <tr><td className="px-3 py-2 text-slate-700 pl-6">소득세 (간이세액표, 부양가족 {teacher.dependents||1}명)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.incomeTax)}</td></tr>
+          <tr className="border-t bg-orange-50"><td colSpan="2" className="px-3 py-2 font-bold text-orange-700">공제 내역 {payslip.tax.employmentType==='freelancer'?'(프리랜서 3.3%)':'(근로자 4대보험+소득세)'}</td></tr>
+          {payslip.tax.employmentType==='freelancer'?<>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">사업소득세 (3%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.incomeTax)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">지방소득세 (0.3%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.localIncomeTax)}</td></tr>
+          </>:<>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">국민연금 (4.5%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.pension)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">건강보험 (3.545%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.health)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">장기요양보험 (건보료×13.14%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.longCare)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">고용보험 (0.9%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.employment)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">소득세 (간이세액표, 부양가족 {teacher.dependents||1}명{(teacher.childrenAge8to20||0)>0?`, 자녀 ${teacher.childrenAge8to20}명 공제`:''}{teacher.withholdingRate&&teacher.withholdingRate!==100?`, ${teacher.withholdingRate}% 비율`:''})</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.incomeTax)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700 pl-6">지방소득세 (소득세의 10%)</td><td className="px-3 py-2 text-right text-slate-700">{fWon(payslip.tax.localIncomeTax)}</td></tr>
+          </>}
           <tr className="border-t border-b font-bold"><td className="px-3 py-2">총 공제액</td><td className="px-3 py-2 text-right text-red-600">{fWon(payslip.tax.total)}</td></tr>
           <tr className="bg-green-50 font-bold text-lg"><td className="px-3 py-3">실수령액</td><td className="px-3 py-3 text-right text-green-700">{fWon(payslip.net)}</td></tr>
         </tbody>
       </table>
 
       <div className="bg-yellow-50 rounded-lg p-3 text-xs text-yellow-700 mb-4">
-        <strong>참고</strong>: 위 소득세는 월급여의 8%를 적용한 간이 추정치입니다. 실제 소득세는 국세청 근로소득 간이세액표(소득세법 시행령 별표 2)에 따라 월급여와 부양가족 수를 기준으로 정해지므로, 정확한 금액은 홈택스에서 확인 후 반영해야 합니다.
+        <strong>참고</strong>: {payslip.tax.employmentType==='freelancer'?'프리랜서 원천징수(3.3%)는 사업소득세 3%+지방소득세 0.3% 합계입니다. 다음달 10일까지 홈택스에서 신고·납부하세요.':'위 소득세는 국세청 근로소득 간이세액표(소득세법 시행령 별표 2, 2026년 3월 개정)를 기반으로 계산한 값입니다. 정확한 세액은 홈택스 간이세액표와 대조 후 지급하세요.'}
       </div>
 
       <div className="flex gap-3 justify-center no-print">
