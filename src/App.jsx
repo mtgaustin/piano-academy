@@ -12159,11 +12159,14 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
   const[bulkRoom,setBulkRoom]=useState('');
   const[bulkStartTime,setBulkStartTime]=useState('');
   const[bulkEndTime,setBulkEndTime]=useState('');
-  const openBulkModal=()=>{setBulkTeacherId('');setBulkAbsenceDate(today());setBulkClassId('');setBulkNote('');setBulkSelected(new Set());setBulkMakeupDate('');setBulkRoom('');setBulkStartTime('');setBulkEndTime('');setBulkModalOpen(true);};
+  const[bulkStudentSearch,setBulkStudentSearch]=useState('');
+  const openBulkModal=()=>{setBulkTeacherId('');setBulkAbsenceDate(today());setBulkClassId('');setBulkNote('');setBulkSelected(new Set());setBulkMakeupDate('');setBulkRoom('');setBulkStartTime('');setBulkEndTime('');setBulkStudentSearch('');setBulkModalOpen(true);};
   const bulkTeacherClasses=bulkTeacherId?(classes||[]).filter(c=>c.teacherId===bulkTeacherId&&!(c.closeDate&&c.closeDate<=today())):[];
-  const bulkStudents=bulkClassId?(students||[]).filter(s=>s.status!=='withdrawn'&&(!s.joinDate||s.joinDate<=today())&&(s.enrolledClasses||[]).includes(bulkClassId)):[];
+  const bulkStudents=bulkClassId?(students||[]).filter(s=>s.status!=='withdrawn'&&(!s.joinDate||s.joinDate<=today())&&(s.enrolledClasses||[]).includes(bulkClassId)):(students||[]).filter(s=>s.status!=='withdrawn'&&(!s.joinDate||s.joinDate<=today()));
+  const bulkStudentsFiltered=bulkStudentSearch?bulkStudents.filter(s=>s.name.includes(bulkStudentSearch)):bulkStudents;
   const toggleBulkStudent=id=>setBulkSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
-  const toggleBulkAll=()=>setBulkSelected(prev=>prev.size===bulkStudents.length?new Set():new Set(bulkStudents.map(s=>s.id)));
+  const allFilteredSelected=bulkStudentsFiltered.length>0&&bulkStudentsFiltered.every(s=>bulkSelected.has(s.id));
+  const toggleBulkAll=()=>setBulkSelected(prev=>{const n=new Set(prev);if(allFilteredSelected){bulkStudentsFiltered.forEach(s=>n.delete(s.id));}else{bulkStudentsFiltered.forEach(s=>n.add(s.id));}return n;});
   // 시간 → 분 변환 (충돌 감지용)
   const timeToMin=t=>{if(!t)return-1;const[h,m]=(t||'0:0').split(':').map(Number);return(h||0)*60+(m||0);};
   // 충돌 감지: 강의실+날짜+시간이 기존 보강 또는 정규수업과 겹치는지 확인
@@ -12188,7 +12191,7 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
   };
   const bulkConflicts=checkBulkConflict(bulkRoom,bulkMakeupDate,bulkStartTime,bulkEndTime);
   const saveBulk=()=>{
-    if(!bulkTeacherId||!bulkAbsenceDate||!bulkClassId){alert('강사, 결석일, 수업은 필수입니다.');return;}
+    if(!bulkTeacherId||!bulkAbsenceDate){alert('강사와 결석일은 필수입니다.');return;}
     if(bulkSelected.size===0){alert('보강 등록할 학생을 한 명 이상 선택하세요.');return;}
     if(bulkStartTime&&bulkEndTime&&timeToMin(bulkEndTime)<=timeToMin(bulkStartTime)){alert('종료 시간은 시작 시간보다 늦어야 합니다.');return;}
     if(bulkConflicts.length>0){
@@ -12300,7 +12303,7 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
     return null;
   };
   const save=()=>{
-    if(!form.studentId||!form.classId){alert('학생과 수업은 필수입니다.');return;}
+    if(!form.studentId){alert('학생은 필수입니다.');return;}
     if(form.makeupStartTime&&form.makeupEndTime&&timeToMin(form.makeupEndTime)<=timeToMin(form.makeupStartTime)){alert('종료 시간은 시작 시간보다 늦어야 합니다.');return;}
     // [Bug Fix] 신규 등록 시 같은 학생+수업+결석일 중복 등록 방지 (출결관리·일괄 등록엔 있었으나 개별 등록에는 누락)
     if(!editTarget){
@@ -12439,12 +12442,12 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
             {[...students].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </Field>
-        <Field label="수업" required>
+        <Field label="수업">
           <select className={inp} value={form.classId} onChange={e=>{
             const cls=classes.find(c=>c.id===e.target.value);
             setForm({...form,classId:e.target.value,className:cls?.name||''});
           }}>
-            <option value="">선택</option>
+            <option value="">선택 안 함</option>
             {classes.filter(c=>!(c.closeDate&&c.closeDate<=today())).sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
@@ -12543,24 +12546,25 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
           <input type="date" className={inp} value={bulkAbsenceDate} onChange={e=>setBulkAbsenceDate(e.target.value)}/>
         </Field>
       </div>
-      <Field label="결석한 수업" required>
+      <Field label="결석한 수업">
         <select className={inp} value={bulkClassId} onChange={e=>{const cid=e.target.value;setBulkClassId(cid);if(cid){const sts=(students||[]).filter(s=>s.status!=='withdrawn'&&(!s.joinDate||s.joinDate<=today())&&(s.enrolledClasses||[]).includes(cid));setBulkSelected(new Set(sts.map(s=>s.id)));}else{setBulkSelected(new Set());}}} disabled={!bulkTeacherId}>
           <option value="">선택 (강사 먼저 선택)</option>
           {bulkTeacherClasses.sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {bulkTeacherId&&bulkTeacherClasses.length===0&&<div className="text-xs text-slate-400 mt-1">운영 중인 수업이 없습니다</div>}
       </Field>
-      {bulkClassId&&<div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm mb-2">
+      {bulkTeacherId&&<div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm mb-2">
         <div className="flex items-center justify-between mb-2">
           <span className="font-semibold text-blue-800">보강 대상 학생 선택 ({bulkSelected.size}/{bulkStudents.length}명)</span>
-          <button type="button" onClick={toggleBulkAll} className="text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 hover:bg-blue-300">{bulkSelected.size===bulkStudents.length?'전체 해제':'전체 선택'}</button>
+          <button type="button" onClick={toggleBulkAll} className="text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 hover:bg-blue-300">{allFilteredSelected?'전체 해제':'전체 선택'}</button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {bulkStudents.map(s=><label key={s.id} className={`flex items-center gap-1 px-2 py-1 rounded-lg cursor-pointer text-xs font-medium border ${bulkSelected.has(s.id)?'bg-blue-100 border-blue-300 text-blue-800':'bg-white border-gray-200 text-slate-500'}`}>
+        <input type="text" className={`${inp} mb-2`} placeholder="학생 이름 검색..." value={bulkStudentSearch} onChange={e=>setBulkStudentSearch(e.target.value)}/>
+        <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+          {bulkStudentsFiltered.map(s=><label key={s.id} className={`flex items-center gap-1 px-2 py-1 rounded-lg cursor-pointer text-xs font-medium border ${bulkSelected.has(s.id)?'bg-blue-100 border-blue-300 text-blue-800':'bg-white border-gray-200 text-slate-500'}`}>
             <input type="checkbox" checked={bulkSelected.has(s.id)} onChange={()=>toggleBulkStudent(s.id)} className="accent-blue-600"/>
             {s.name}
           </label>)}
-          {bulkStudents.length===0&&<span className="text-slate-500 text-xs">해당 수업 등록 학생이 없습니다</span>}
+          {bulkStudentsFiltered.length===0&&<span className="text-slate-500 text-xs">{bulkStudentSearch?'검색 결과가 없습니다':'해당 수업 등록 학생이 없습니다'}</span>}
         </div>
       </div>}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2">
