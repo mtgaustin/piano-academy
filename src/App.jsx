@@ -9670,7 +9670,7 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
           </button>;
         })}
       </div></Field>
-      {(form.enrolledClasses||[]).length>0&&<Field label="개인 레슨 시간 설정">
+      <Field label="개인 레슨 시간 설정">
         <div className="space-y-3">
           {(form.enrolledClasses||[]).map(cid=>{
             const cls=classes.find(c=>c.id===cid);
@@ -9697,9 +9697,32 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
               </div>
             </div>;
           })}
+          {(()=>{
+            const dn=['일','월','화','수','목','금','토'];
+            const soloSlots=(form.lessonSchedules||[]).map((ls,i)=>({...ls,_idx:i})).filter(ls=>!ls.classId);
+            return<div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold text-slate-600">수업 없는 개인 레슨</span>
+                <button type="button" className="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-700 hover:bg-slate-300" onClick={()=>addLessonSlot(null)}>+ 시간 추가</button>
+              </div>
+              {soloSlots.length===0&&<div className="text-xs text-slate-400 py-1">수강 수업에 관계없이 개인 레슨 시간을 등록할 수 있습니다.</div>}
+              <div className="space-y-1.5">
+                {soloSlots.map(ls=><div key={ls._idx} className="flex items-center gap-1.5">
+                  <select className="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white" value={ls.day===''?'':String(ls.day)} onChange={e=>updateLessonSlot(ls._idx,'day',e.target.value===''?'':Number(e.target.value))}>
+                    <option value="">요일</option>
+                    {dn.map((d,i)=><option key={i} value={i}>{d}요일</option>)}
+                  </select>
+                  <input type="time" className="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white" value={ls.startTime||''} onChange={e=>updateLessonSlot(ls._idx,'startTime',e.target.value)}/>
+                  <span className="text-slate-400 text-xs">~</span>
+                  <input type="time" className="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white" value={ls.endTime||''} onChange={e=>updateLessonSlot(ls._idx,'endTime',e.target.value)}/>
+                  <button type="button" className="text-red-400 hover:text-red-600 text-xs px-1 ml-auto shrink-0" onClick={()=>removeLessonSlot(ls._idx)}>✕</button>
+                </div>)}
+              </div>
+            </div>;
+          })()}
         </div>
-        <p className="text-xs text-slate-400 mt-1">수업별로 레슨 요일·시간을 추가하세요. 주 2회 이상도 가능합니다. (선택사항)</p>
-      </Field>}
+        <p className="text-xs text-slate-400 mt-1">수업별 또는 수업 없이 개인 레슨 시간을 등록하세요. 주 2회 이상도 가능합니다.</p>
+      </Field>
       </div>
       {editTarget&&<Field label="재원 이력">
         <div className="space-y-1 text-xs text-slate-600 border border-gray-200 rounded-lg p-3">
