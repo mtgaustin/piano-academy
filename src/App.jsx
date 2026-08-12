@@ -9794,7 +9794,7 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
   const[showAllList,setShowAllList]=useState(false);
   const[incCatFilter,setIncCatFilter]=useState('전체');
   const[expCatFilter,setExpCatFilter]=useState('전체');
-  const[form,setForm]=useState({date:'',category:'',description:'',amount:''});
+  const[form,setForm]=useState({date:'',category:'',description:'',amount:'',isFixed:false});
   const incCats=['수강료','교재비','악기대여료','행사수입','기타수입'];
   const expCats=['강사급여','임대료','전기·수도요금','관리비','소모품','교육용품','마케팅','시설유지','기타지출'];
   const _budgetToday=today();
@@ -9808,7 +9808,7 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
   const mExpSum=mExpItems.reduce((s,e)=>s+Number(e.amount),0);
   const mProfit=mIncSum-mExpSum;
   const mMonthLabel=`${pdfMonth.split('-')[0]}년 ${parseInt(pdfMonth.split('-')[1])}월`;
-  const openAdd=type=>{setModalType(type);setEditTarget(null);setForm({date:today(),category:'',description:'',amount:''});setModalOpen(true);};
+  const openAdd=type=>{setModalType(type);setEditTarget(null);setForm({date:today(),category:'',description:'',amount:'',isFixed:false});setModalOpen(true);};
   const openEdit=(item,type)=>{setModalType(type);setEditTarget(item);setForm({...item});setModalOpen(true);};
   const save=()=>{
     if(!form.date||!form.amount){alert('날짜와 금액은 필수입니다.');return;}
@@ -9948,7 +9948,7 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
       <tbody>{[...visibleItems].sort((a,b)=>b.date.localeCompare(a.date)).map(item=><tr key={item.id} className="table-row border-t border-gray-50">
         <td className="px-4 py-3 text-slate-700">{fDate(item.date)}</td>
         <td className="px-4 py-3"><span className={`badge ${type==='income'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`}>{item.category}</span></td>
-        <td className="px-4 py-3 text-slate-800 truncate">{item.description}</td>
+        <td className="px-4 py-3 text-slate-800 truncate">{item.description}{type==='expense'&&item.isFixed&&<span className="ml-1.5 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded px-1.5 py-0.5 font-medium">고정</span>}</td>
         <td className={`px-4 py-3 font-bold ${type==='income'?'text-green-600':'text-red-500'}`}>{fWon(item.amount)}</td>
         <td className="px-4 py-3"><div className="flex gap-1">
           <button onClick={()=>openEdit(item,type)} className="text-xs px-2 py-1 rounded bg-[#f1f5f9] text-[#1e3a5f] hover:bg-[#dbeafe]">수정</button>
@@ -10011,13 +10011,30 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
         })()}</div>
       </div>}
       {tab==='income'&&<ListTable items={income} type="income" catFilter={incCatFilter} setCatFilter={setIncCatFilter}/>}
-      {tab==='expense'&&<ListTable items={expenses} type="expense" catFilter={expCatFilter} setCatFilter={setExpCatFilter}/>}
+      {tab==='expense'&&<>
+        <div className="px-4 pt-3 pb-1 flex items-center gap-2 border-b border-gray-100">
+          <button className={btn('teal')} style={{fontSize:'12px',padding:'5px 12px'}} onClick={()=>{
+            const prevYM=(()=>{const d=new Date(pdfMonth+'-01');d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+            const fixedItems=expenses.filter(e=>e.isFixed&&e.date&&e.date.startsWith(prevYM));
+            if(fixedItems.length===0){alert(`${prevYM.replace('-','년 ')}월에 고정 지출 항목이 없습니다.\n지출 항목 등록 시 "고정지출" 체크박스를 선택하세요.`);return;}
+            if(!confirm(`${prevYM.replace('-','년 ')}월 고정지출 ${fixedItems.length}건을 ${pdfMonth.replace('-','년 ')}월로 불러오시겠습니까?`))return;
+            const newItems=fixedItems.map(e=>({...e,id:genId(),date:`${pdfMonth}${e.date.slice(7)}`}));
+            const dupCheck=newItems.filter(n=>!expenses.some(e=>e.date.startsWith(pdfMonth)&&e.category===n.category&&e.description===n.description&&e.amount===n.amount));
+            if(dupCheck.length===0){alert('이미 동일한 항목이 이번 달에 등록되어 있습니다.');return;}
+            setExpenses(prev=>[...prev,...dupCheck]);
+            alert(`${dupCheck.length}건을 이번 달에 추가했습니다.`);
+          }}>📋 전월 고정지출 불러오기</button>
+          <span className="text-xs text-slate-400">고정지출로 등록된 항목을 이번 달로 복사합니다</span>
+        </div>
+        <ListTable items={expenses} type="expense" catFilter={expCatFilter} setCatFilter={setExpCatFilter}/>
+      </>}
     </div>
     <Modal open={modalOpen} onClose={()=>setModalOpen(false)} title={`${editTarget?'수정':'추가'} - ${modalType==='income'?'수입':'지출'}`}>
       <Field label="날짜" required><input className={inp} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></Field>
       <Field label="카테고리"><select className={inp} value={form.category} onChange={e=>setForm({...form,category:e.target.value})}><option value="">선택</option>{(modalType==='income'?incCats:expCats).map(c=><option key={c} value={c}>{c}</option>)}</select></Field>
       <Field label="내용"><input className={inp} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></Field>
       <Field label="금액 (원, 1원 단위 입력 가능)" required><WonInput value={form.amount} onChange={v=>setForm({...form,amount:v})} free={true}/></Field>
+      {modalType==='expense'&&<label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 select-none"><input type="checkbox" checked={!!form.isFixed} onChange={e=>setForm({...form,isFixed:e.target.checked})} className="accent-indigo-600 w-4 h-4"/><span>고정지출 (매월 반복)</span><span className="text-xs text-slate-400">— 전월 고정지출 불러오기 기능에서 사용됩니다</span></label>}
       <div className="flex justify-end gap-3 mt-2"><button className={btn('indigo')} onClick={save}>저장</button><button className={btn('gray')} onClick={()=>setModalOpen(false)}>취소</button></div>
     </Modal>
     <Confirm open={!!confirmItem} msg="이 내역을 삭제하시겠습니까?" onYes={del} onNo={()=>setConfirmItem(null)}/>
@@ -10047,7 +10064,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
   const handleViewMonthChange=e=>{if(e.target.value<=tuitionNextYM)setViewMonth(e.target.value);};
   const[modalOpen,setModalOpen]=useState(false);
   const[editTarget,setEditTarget]=useState(null);
-  const[form,setForm]=useState({studentId:'',studentName:'',month:'',amount:'',dueDate:'',paidDate:'',payMethod:'',status:'unpaid',note:''});
+  const[form,setForm]=useState({studentId:'',studentName:'',month:'',amount:'',textbookFee:'',dueDate:'',paidDate:'',payMethod:'',status:'unpaid',note:''});
   const[confirmItem,setConfirmItem]=useState(null);
   const payMethods=['현금','카드','계좌이체','기타'];
   const getStudentInfo=id=>students.find(s=>s.id===id)||{};
@@ -10082,7 +10099,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
   const overdueAll=tuitions.filter(t=>effectiveStatus(t)==='overdue'&&t.month&&t.month<todayMonth);
   // [14] 학생별 누적 연체 그룹
   const overdueByStudent=(()=>{const m={};overdueAll.forEach(t=>{if(!m[t.studentId])m[t.studentId]=[];m[t.studentId].push(t);});return m;})();
-  const openAdd=()=>{setEditTarget(null);setForm({studentId:'',studentName:'',month:viewMonth,amount:'',dueDate:calcTuitionDueDate(today(),viewMonth,tuitionDaySetting),paidDate:'',payMethod:'',status:'unpaid',note:''});setModalOpen(true);};
+  const openAdd=()=>{setEditTarget(null);setForm({studentId:'',studentName:'',month:viewMonth,amount:'',textbookFee:'',dueDate:calcTuitionDueDate(today(),viewMonth,tuitionDaySetting),paidDate:'',payMethod:'',status:'unpaid',note:''});setModalOpen(true);};
   const migrateAllDueDates=()=>{
     const toUpdate=tuitions.filter(t=>{
       if(!t.month)return false;
@@ -10178,7 +10195,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
   const save=()=>{
     if(!form.studentId||!form.month||!form.amount){alert('학생, 월, 금액은 필수입니다.');return;}
     const student=getStudentInfo(form.studentId);
-    const data={...form,amount:Number(form.amount),studentName:student.name||form.studentName||''};
+    const data={...form,amount:Number(form.amount),textbookFee:Number(form.textbookFee)||0,studentName:student.name||form.studentName||''};
     const wasAlreadyPaid=editTarget&&editTarget.status==='paid';
     const isNowPaid=form.status==='paid';
     if(editTarget){
@@ -10301,6 +10318,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
             <th className="px-4 py-3 text-left cursor-pointer select-none" style={{width:'90px'}} onClick={()=>tuSortField('studentName')}>학생{tuArrow('studentName')}</th>
             <th className="px-4 py-3 text-left" style={{width:'100px'}}>레벨</th>
             <th className="px-4 py-3 text-right cursor-pointer select-none" style={{width:'100px'}} onClick={()=>tuSortField('amount')}>수강료{tuArrow('amount')}</th>
+            <th className="px-4 py-3 text-right" style={{width:'90px'}}>교재비</th>
             <th className="px-4 py-3 text-left cursor-pointer select-none" style={{width:'100px'}} onClick={()=>tuSortField('dueDate')}>납부기한{tuArrow('dueDate')}</th>
             <th className="px-4 py-3 text-left cursor-pointer select-none" style={{width:'100px'}} onClick={()=>tuSortField('paidDate')}>납부일{tuArrow('paidDate')}</th>
             <th className="px-4 py-3 text-left" style={{width:'90px'}}>결제방법</th>
@@ -10320,6 +10338,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
               <td className="px-4 py-3 font-semibold text-slate-900">{t.studentName||student.name||'-'}{students.find(s=>s.id===t.studentId)?.status==='withdrawn'&&<span className="ml-1.5 text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 font-normal">퇴원</span>}</td>
               <td className="px-4 py-3 text-slate-600 text-sm">{student.level||student.grade||'-'}</td>
               <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">{fWon(t.amount)}{t.isProrated&&<span className="text-xs text-amber-600 font-normal ml-1" title={t.baseFee?`정액 ${fWon(t.baseFee)}`:''}>(일할)</span>}</td>
+              <td className="px-4 py-3 text-right text-sm text-slate-600">{t.textbookFee?fWon(t.textbookFee):<span className="text-slate-300">-</span>}</td>
               <td className="px-4 py-3 text-sm">{t.dueDate?<span className={dueSoon?'text-orange-600 font-semibold':'text-slate-700'}>{fDate(t.dueDate)}{dueSoon&&' ⚠️'}</span>:'-'}</td>
               <td className="px-4 py-3 text-sm text-slate-700">{t.paidDate?fDate(t.paidDate):'-'}</td>
               <td className="px-4 py-3 text-sm text-slate-700">{t.payMethod||'-'}</td>
@@ -10460,6 +10479,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
         </div>;
       })()}
       <Field label="수강료 (원, 만원 단위)" required><WonInput value={form.amount} onChange={v=>setForm({...form,amount:v})}/></Field>
+      <Field label="교재비 (원, 선택사항)"><WonInput value={form.textbookFee||''} onChange={v=>setForm({...form,textbookFee:v})} free={true}/></Field>
       <Field label="납부 상태">
         <select className={inp} value={form.status} onChange={e=>{const s=e.target.value;setForm({...form,status:s,...(s!=='paid'?{paidDate:'',payMethod:''}:{})});}}>
           <option value="unpaid">미납</option><option value="paid">납부완료</option><option value="overdue">연체</option>
@@ -10488,7 +10508,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
 // input이 새로 생성되면서 포커스가 풀려버려 "한 글자만 입력해도 끊기는" 버그가 발생했습니다.
 // 바깥으로 빼고 필요한 값들을 모두 props로 전달하면, React가 같은 컴포넌트로 인식해 input을
 // 재사용하므로 포커스가 유지됩니다.
-function AttRow({person,type,classId,cur,statusBtns,setStatus,setAttendance,isWarn,onAddMakeup,hasMakeup,onCancelMakeup,teacherBadge,teacherBadgeColor,isWithdrawn}){
+function AttRow({person,type,classId,cur,statusBtns,setStatus,setAttendance,isWarn,onAddMakeup,hasMakeup,onCancelMakeup,teacherBadge,teacherBadgeColor,isWithdrawn,showTime}){
   // 버튼 목록(statusBtns)이 비어있어도(퇴직 강사 등) 기록된 상태를 올바르게 표시하기 위한 전체 상태 맵
   const _allStatusMap={present:{label:'출석',color:'bg-green-100 text-green-700'},late:{label:'지각',color:'bg-yellow-100 text-yellow-700'},halfday:{label:'반차',color:'bg-cyan-100 text-cyan-700'},vacation:{label:'휴가',color:'bg-blue-100 text-blue-700'},sick:{label:'병가',color:'bg-pink-100 text-pink-700'},training:{label:'교육/연수',color:'bg-purple-100 text-purple-700'},other:{label:'기타',color:'bg-slate-100 text-slate-600'},absent:{label:'결석',color:'bg-red-100 text-red-700'},leave:{label:'조퇴',color:'bg-orange-100 text-orange-700'},cancelled:{label:'휴강',color:'bg-slate-100 text-slate-600'}};
   const _di=(s)=>{const f=statusBtns.find(b=>b.s===s);return f||_allStatusMap[s]||{label:s,color:'bg-gray-100'};};
@@ -10500,16 +10520,24 @@ function AttRow({person,type,classId,cur,statusBtns,setStatus,setAttendance,isWa
         className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${cur?.status===s?color+' ring-2 ring-offset-1':'border-gray-200 text-slate-600 hover:border-gray-300'}`}>{label}</button>)}
     </div></td>
     <td className="px-4 py-3" style={{width:'130px',minWidth:'130px'}}>{cur?<span className={`badge ${_di(cur.status).color}`}>{_di(cur.status).label}</span>:<span className="text-xs text-gray-300">미기록</span>}</td>
-    <td className="px-4 py-3" style={{width:'180px',minWidth:'180px'}}>
-      <div className="flex items-center gap-2">
-        <input className="text-xs border border-gray-200 rounded px-2 py-1 w-28" placeholder="비고..." value={cur?.note||''}
-          onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,note:e.target.value}:a));}}/>
-        {type==='student'&&cur?.status==='absent'&&(hasMakeup
-          ?<div className="flex items-center gap-1">
-              <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-200">보강등록됨</span>
-              {onCancelMakeup&&<button onClick={onCancelMakeup} className="text-xs bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 px-1.5 py-0.5 rounded-full font-medium" title="보강 취소">✕</button>}
-            </div>
-          :<button onClick={onAddMakeup} className="text-xs bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 px-2 py-0.5 rounded-full font-medium">+ 보강</button>)}
+    <td className="px-4 py-3" style={{width:'200px',minWidth:'200px'}}>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <input className="text-xs border border-gray-200 rounded px-2 py-1 w-28" placeholder="비고..." value={cur?.note||''}
+            onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,note:e.target.value}:a));}}/>
+          {type==='student'&&cur?.status==='absent'&&(hasMakeup
+            ?<div className="flex items-center gap-1">
+                <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-200">보강등록됨</span>
+                {onCancelMakeup&&<button onClick={onCancelMakeup} className="text-xs bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 px-1.5 py-0.5 rounded-full font-medium" title="보강 취소">✕</button>}
+              </div>
+            :<button onClick={onAddMakeup} className="text-xs bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 px-2 py-0.5 rounded-full font-medium">+ 보강</button>)}
+        </div>
+        {type==='student'&&showTime&&<div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="shrink-0 text-slate-400">등원</span>
+          <input type="time" className="border border-gray-200 rounded px-1.5 py-0.5 text-xs w-20 text-slate-700" value={cur?.arrivalTime||''} onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,arrivalTime:e.target.value}:a));}} placeholder="--:--"/>
+          <span className="shrink-0 text-slate-400">하원</span>
+          <input type="time" className="border border-gray-200 rounded px-1.5 py-0.5 text-xs w-20 text-slate-700" value={cur?.departureTime||''} onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,departureTime:e.target.value}:a));}} placeholder="--:--"/>
+        </div>}
       </div>
     </td>
   </tr>;
@@ -10578,6 +10606,7 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
     }
     return conflicts;
   };
+  const[showTime,setShowTime]=useState(false);
   const[attTeaSortKey,setAttTeaSortKey]=useState('name');
   const[attTeaSortDir,setAttTeaSortDir]=useState('asc');
   const attTeaSortField=k=>{if(attTeaSortKey===k)setAttTeaSortDir(d=>d==='asc'?'desc':'asc');else{setAttTeaSortKey(k);setAttTeaSortDir('asc');}};
@@ -10595,8 +10624,13 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
   const secondaryCnt=tab==='teacher'?dayAtt.filter(a=>a.status==='vacation'||a.status==='sick').length:dayAtt.filter(a=>a.status==='absent').length;
   const setStatus=(type,refId,status,note='',classId)=>{
     const existing=getStatus(type,refId,classId);
-    if(existing)setAttendance(prev=>prev.map(a=>a.id===existing.id?{...a,status,note}:a));
-    else setAttendance(prev=>[...prev,{id:genId(),date,type,refId,status,note,...(type==='student'?{classId}:{})}]);
+    const nowT=(()=>{const d=new Date();return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;})();
+    const timeFields=type==='student'?(
+      ['present','late'].includes(status)&&!existing?.arrivalTime?{arrivalTime:nowT}:
+      status==='leave'&&!existing?.departureTime?{departureTime:nowT}:{}
+    ):{};
+    if(existing)setAttendance(prev=>prev.map(a=>a.id===existing.id?{...a,status,note,...timeFields}:a));
+    else setAttendance(prev=>[...prev,{id:genId(),date,type,refId,status,note,...(type==='student'?{classId}:{}),...timeFields}]);
     // [20] 결석/휴강 → 다른 상태로 변경 시 연결된 보강 자동 삭제
     if(type==='student'&&status!=='absent'&&status!=='cancelled'&&setMakeups){
       const prevStatus=existing?.status;
@@ -10706,6 +10740,10 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
         </select>
         <input className={inp} placeholder="이름 검색..." value={nameSearch} onChange={e=>setNameSearch(e.target.value)} style={{width:'140px'}}/>
         {nameSearch&&<button onClick={()=>setNameSearch('')} className="text-xs text-slate-400 hover:text-slate-600">✕</button>}
+        <label className="flex items-center gap-1.5 cursor-pointer select-none ml-auto" title="등원/하원 시간 입력란 표시">
+          <input type="checkbox" checked={showTime} onChange={e=>setShowTime(e.target.checked)} className="accent-indigo-600 w-4 h-4"/>
+          <span className="text-xs font-medium text-slate-600">⏰ 시간기록</span>
+        </label>
       </div>}
       {tab==='teacher'&&<div className="overflow-x-auto overflow-y-auto tbl-scroll" style={{maxHeight:'calc(100vh - 280px)'}}><table className="w-full text-sm app-table">
         <thead className="bg-[#f1f5f9] text-slate-600 text-xs"><tr>
@@ -10778,7 +10816,7 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
                   return attStuSortDir==='asc'?sa.localeCompare(sb,'ko'):sb.localeCompare(sa,'ko');
                 }
                 return attStuSortDir==='asc'?a.name.localeCompare(b.name,'ko'):b.name.localeCompare(a.name,'ko');
-              }).map(p=>{const _mk=(makeups||[]).find(m=>m.studentId===p.id&&m.absenceDate===date&&m.classId===c.id);return<AttRow key={p.id+'-'+c.id} person={p} type="student" classId={c.id} cur={getStatus('student',p.id,c.id)} statusBtns={studentStatusBtns} setStatus={setStatus} setAttendance={setAttendance} isWarn={!!(liveWarnIds.includes(p.id))} isWithdrawn={p.status==='withdrawn'} onAddMakeup={()=>{const st=students.find(s=>s.id===p.id);const cl=classes.find(x=>x.id===c.id);if(st&&cl&&!_mk){setMakeups(prev=>[...prev,{id:genId(),studentId:p.id,studentName:st.name,classId:c.id,className:cl.name,absenceDate:date,makeupDate:'',status:'unscheduled',note:''}]);}}} hasMakeup={!!_mk} onCancelMakeup={_mk?()=>setMakeups(prev=>prev.filter(m=>m.id!==_mk.id)):null}/>;})}
+              }).map(p=>{const _mk=(makeups||[]).find(m=>m.studentId===p.id&&m.absenceDate===date&&m.classId===c.id);return<AttRow key={p.id+'-'+c.id} person={p} type="student" classId={c.id} cur={getStatus('student',p.id,c.id)} statusBtns={studentStatusBtns} setStatus={setStatus} setAttendance={setAttendance} isWarn={!!(liveWarnIds.includes(p.id))} isWithdrawn={p.status==='withdrawn'} showTime={showTime} onAddMakeup={()=>{const st=students.find(s=>s.id===p.id);const cl=classes.find(x=>x.id===c.id);if(st&&cl&&!_mk){setMakeups(prev=>[...prev,{id:genId(),studentId:p.id,studentName:st.name,classId:c.id,className:cl.name,absenceDate:date,makeupDate:'',status:'unscheduled',note:''}]);}}} hasMakeup={!!_mk} onCancelMakeup={_mk?()=>setMakeups(prev=>prev.filter(m=>m.id!==_mk.id)):null}/>;})}
             </React.Fragment>;
           })}
           {(classFilter==='all'||classFilter==='unassigned')&&unassignedStudents.length>0&&(()=>{
@@ -10788,7 +10826,7 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
               <tr><td colSpan={5} className="group-header bg-[#f1f5f9] text-slate-700">
                 🎹 기타 (반 미배정) ({dispUnassigned.length}{showWarnOnly?` / 전체 ${unassignedStudents.length}`:''}명)
               </td></tr>
-              {[...dispUnassigned].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(p=><AttRow key={p.id} person={p} type="student" classId={null} cur={getStatus('student',p.id,null)} statusBtns={studentStatusBtns} setStatus={setStatus} setAttendance={setAttendance} isWarn={!!(liveWarnIds.includes(p.id))} onAddMakeup={null} hasMakeup={false}/>)}
+              {[...dispUnassigned].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(p=><AttRow key={p.id} person={p} type="student" classId={null} cur={getStatus('student',p.id,null)} statusBtns={studentStatusBtns} setStatus={setStatus} setAttendance={setAttendance} isWarn={!!(liveWarnIds.includes(p.id))} showTime={showTime} onAddMakeup={null} hasMakeup={false}/>)}
             </React.Fragment>;
           })()}
           {classFilter!=='all'&&classFilter!=='unassigned'&&students.filter(s=>s.status!=='withdrawn'&&(!s.joinDate||s.joinDate<=today())&&(s.enrolledClasses||[]).includes(classFilter)).length===0&&
@@ -12560,12 +12598,12 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
             {[...students].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </Field>
-        <Field label="수업">
+        <Field label="수업 (선택사항)">
           <select className={inp} value={form.classId} onChange={e=>{
             const cls=classes.find(c=>c.id===e.target.value);
             setForm({...form,classId:e.target.value,className:cls?.name||''});
           }}>
-            <option value="">선택 안 함</option>
+            <option value="">선택 안 함 (수업 없는 개인 보강)</option>
             {classes.filter(c=>!(c.closeDate&&c.closeDate<=today())).sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
