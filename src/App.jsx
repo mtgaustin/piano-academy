@@ -9262,13 +9262,75 @@ function ClassManagement({classes,setClasses,teachers,students,role}){
       </div>
     </div></div>;
   };
+  const LessonScheduleView=()=>{
+    const startHour=8,endHour=21;
+    const hours=Array.from({length:endHour-startHour},(_,i)=>i+startHour);
+    const cols=[1,2,3,4,5,6];
+    const ROW_H=72,MIN_BOX_H=32;
+    const clrPalette=['bg-blue-100 border-blue-300 text-blue-900','bg-green-100 border-green-300 text-green-900','bg-yellow-100 border-yellow-300 text-yellow-900','bg-purple-100 border-purple-300 text-purple-900','bg-red-100 border-red-300 text-red-900','bg-orange-100 border-orange-300 text-orange-900','bg-indigo-100 border-indigo-300 text-indigo-900','bg-pink-100 border-pink-300 text-pink-900','bg-teal-100 border-teal-300 text-teal-900'];
+    const clsColorMap={};
+    classes.forEach((c,i)=>{clsColorMap[c.id]=clrPalette[i%clrPalette.length];});
+    const layoutForDay=d=>{
+      const slots=[];
+      (students||[]).forEach(s=>{
+        if(s.status==='withdrawn')return;
+        (s.lessonSchedules||[]).forEach(ls=>{
+          if(ls.day===d&&ls.startTime&&ls.endTime){
+            slots.push({studentName:s.name,classId:ls.classId,startTime:ls.startTime,endTime:ls.endTime,_start:timeToMin(ls.startTime),_end:timeToMin(ls.endTime)});
+          }
+        });
+      });
+      slots.sort((a,b)=>a._start-b._start);
+      const laneEnds=[];
+      slots.forEach(s=>{let lane=laneEnds.findIndex(end=>end<=s._start);if(lane===-1){lane=laneEnds.length;laneEnds.push(s._end);}else laneEnds[lane]=s._end;s._lane=lane;});
+      slots.forEach(s=>{const ov=slots.filter(o=>o._start<s._end&&o._end>s._start);s._lanes=Math.max(...ov.map(o=>o._lane))+1;});
+      return slots;
+    };
+    const totalSlots=(students||[]).filter(s=>s.status!=='withdrawn').reduce((n,s)=>n+(s.lessonSchedules||[]).filter(ls=>ls.startTime&&ls.endTime).length,0);
+    if(totalSlots===0)return<div className="flex flex-col items-center justify-center py-20 text-slate-400">
+      <div className="text-4xl mb-3">📅</div>
+      <div className="text-sm font-medium">설정된 개인 레슨 시간이 없습니다</div>
+      <div className="text-xs mt-1">학생 관리에서 각 학생의 수정 버튼을 눌러 개인 레슨 시간을 설정하세요</div>
+    </div>;
+    return<div className="overflow-x-auto"><div style={{minWidth:'760px'}}>
+      <div className="grid gap-px bg-gray-200" style={{gridTemplateColumns:'80px repeat(6,1fr)'}}>
+        <div className="bg-[#f1f5f9] p-2 text-center text-xs text-slate-600">시간</div>
+        {cols.map(d=><div key={d} className={`p-2 text-center text-sm font-semibold ${d===todayDow?'bg-blue-100 text-blue-800':'bg-[#f1f5f9] text-slate-900'}`}>
+          {dayNames[d]}요일{d===todayDow&&<div className="text-[10px] font-bold text-blue-600 leading-tight">오늘</div>}
+        </div>)}
+        <div className="bg-white">
+          {hours.map(h=><div key={h} className="flex items-center px-3 text-xs text-slate-600 border-t border-gray-100" style={{height:ROW_H}}>{h}:00</div>)}
+        </div>
+        {cols.map(d=>{
+          const daySlots=layoutForDay(d);
+          return<div key={d} className={`relative border-t border-gray-100 ${d===todayDow?'bg-blue-50/40':'bg-white'}`} style={{height:ROW_H*hours.length}}>
+            {hours.map((h,i)=>i>0&&<div key={h} className="absolute left-0 right-0 border-t border-gray-100" style={{top:ROW_H*i}}/>)}
+            {daySlots.map((s,idx)=>{
+              const top=(s._start-startHour*60)/60*ROW_H;
+              const height=Math.max((s._end-s._start)/60*ROW_H-2,MIN_BOX_H);
+              const widthPct=100/s._lanes;
+              const clsName=classes.find(c=>c.id===s.classId)?.name||'';
+              return<div key={idx} className={`${clsColorMap[s.classId]||'bg-gray-100 border-gray-300 text-gray-900'} border rounded px-1.5 py-1 text-xs leading-tight absolute overflow-hidden cursor-default`}
+                style={{top,height,left:`calc(${widthPct*s._lane}% + 2px)`,width:`calc(${widthPct}% - 4px)`}}
+                title={`${s.studentName} · ${s.startTime}~${s.endTime}${clsName?' ('+clsName+')':''}`}>
+                <div className="font-semibold truncate">{s.studentName}</div>
+                <div className="opacity-70 truncate">{s.startTime}~{s.endTime}</div>
+                {clsName&&<div className="opacity-60 truncate" style={{fontSize:'10px'}}>{clsName}</div>}
+              </div>;
+            })}
+          </div>;
+        })}
+      </div>
+    </div></div>;
+  };
   return<div className="space-y-5">
     <div className="flex items-center justify-between">
       <div><h1 className="text-2xl font-bold text-slate-900">수업 관리</h1><p className="text-slate-600 text-sm mt-1">운영중 {activeClasses.length}개 · 종료 {endedClasses.length}개</p></div>
       <div className="flex gap-3">
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button onClick={()=>setViewMode('list')} className={`tab-btn text-xs py-1.5 ${viewMode==='list'?'active':''}`}>목록</button>
-          <button onClick={()=>setViewMode('schedule')} className={`tab-btn text-xs py-1.5 ${viewMode==='schedule'?'active':''}`}>시간표</button>
+          <button onClick={()=>setViewMode('schedule')} className={`tab-btn text-xs py-1.5 ${viewMode==='schedule'?'active':''}`}>수업 시간표</button>
+          <button onClick={()=>setViewMode('lesson')} className={`tab-btn text-xs py-1.5 ${viewMode==='lesson'?'active':''}`}>개인 레슨</button>
         </div>
         {role!=='teacher'&&<button className={btn('indigo')} onClick={openAdd}>+ 수업 추가</button>}
       </div>
@@ -9326,7 +9388,7 @@ function ClassManagement({classes,setClasses,teachers,students,role}){
           </div></td>}
         </tr>;})}
         {displayClasses.length===0&&<tr><td colSpan={9} className="text-center py-12 text-slate-600">{classTab==='active'?'운영중인 수업이 없습니다':'종료된 수업이 없습니다'}</td></tr>}
-        </tbody></table></div>:<div className="p-4"><ScheduleView/></div>}
+        </tbody></table></div>:viewMode==='schedule'?<div className="p-4"><ScheduleView/></div>:<div className="p-4"><LessonScheduleView/></div>}
     </div>
     <Modal open={modalOpen} onClose={()=>setModalOpen(false)} title={editTarget?'수업 수정':'수업 추가'}>
       <Field label="수업명" required><input className={inp} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></Field>
@@ -9379,11 +9441,11 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
   const[rejoinModalOpen,setRejoinModalOpen]=useState(false);
   const[rejoinTarget,setRejoinTarget]=useState(null);
   const[rejoinForm,setRejoinForm]=useState({date:''});
-  const[form,setForm]=useState({name:'',grade:'',phone:'',parentName:'',parentPhone:'',email:'',school:'',enrolledClasses:[],joinDate:'',status:'active',enrollmentHistory:[],progressNotes:[],note:''});
+  const[form,setForm]=useState({name:'',grade:'',phone:'',parentName:'',parentPhone:'',email:'',school:'',enrolledClasses:[],joinDate:'',status:'active',enrollmentHistory:[],progressNotes:[],note:'',lessonSchedules:[]});
   const grades=['미취학','초1','초2','초3','초4','초5','초6','중1','중2','중3','고1','고2','고3','성인'];
   const withdrawReasons=['이사','학업','비용','불만족','건강','기타'];
-  const openAdd=()=>{setEditTarget(null);setForm({name:'',grade:'',phone:'',parentName:'',parentPhone:'',email:'',school:'',enrolledClasses:[],joinDate:today(),status:'active',enrollmentHistory:[{joinDate:today(),leaveDate:null}],progressNotes:[],note:''});setNoteText('');setModalOpen(true);};
-  const openEdit=s=>{setEditTarget(s);setForm({...s});setNoteText('');setModalOpen(true);};
+  const openAdd=()=>{setEditTarget(null);setForm({name:'',grade:'',phone:'',parentName:'',parentPhone:'',email:'',school:'',enrolledClasses:[],joinDate:today(),status:'active',enrollmentHistory:[{joinDate:today(),leaveDate:null}],progressNotes:[],note:'',lessonSchedules:[]});setNoteText('');setModalOpen(true);};
+  const openEdit=s=>{setEditTarget(s);setForm({...s,lessonSchedules:s.lessonSchedules||[]});setNoteText('');setModalOpen(true);};
   const toggleClass=id=>{
     const cls=classes.find(c=>c.id===id);
     setForm(f=>{
@@ -9467,6 +9529,14 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
     setEditNoteIdx(null);setEditNoteText('');
   };
   const deleteNote=idx=>{setForm(f=>({...f,progressNotes:(f.progressNotes||[]).filter((_,i)=>i!==idx)}));if(editNoteIdx===idx){setEditNoteIdx(null);setEditNoteText('');}};
+  const updateLessonSchedule=(cid,field,val)=>{
+    setForm(f=>{
+      const prev=(f.lessonSchedules||[]).filter(ls=>ls.classId!==cid);
+      const existing=(f.lessonSchedules||[]).find(ls=>ls.classId===cid)||{classId:cid,day:'',startTime:'',endTime:''};
+      return{...f,lessonSchedules:[...prev,{...existing,[field]:val}]};
+    });
+  };
+  const removeLessonSchedule=cid=>setForm(f=>({...f,lessonSchedules:(f.lessonSchedules||[]).filter(ls=>ls.classId!==cid)}));
   const del=id=>{setStudents(prev=>prev.filter(s=>s.id!==id));if(setTuitions)setTuitions(prev=>prev.filter(t=>!(t.studentId===id&&t.status!=='paid')));setConfirmId(null);};
   const getClsName=id=>classes.find(c=>c.id===id)?.name||id;
   const lastLeave=s=>{const h=s.enrollmentHistory||[];return h.length?h[h.length-1].leaveDate:null;};
@@ -9605,6 +9675,28 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
           </button>;
         })}
       </div></Field>
+      {(form.enrolledClasses||[]).length>0&&<Field label="개인 레슨 시간 설정">
+        <div className="space-y-2">
+          {(form.enrolledClasses||[]).map(cid=>{
+            const cls=classes.find(c=>c.id===cid);
+            if(!cls)return null;
+            const ls=(form.lessonSchedules||[]).find(x=>x.classId===cid)||{classId:cid,day:'',startTime:'',endTime:''};
+            const dayNames=['일','월','화','수','목','금','토'];
+            return<div key={cid} className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              <span className="text-xs font-semibold text-blue-800 w-20 shrink-0 truncate">{cls.name}</span>
+              <select className="border border-blue-200 rounded px-2 py-1 text-xs bg-white" value={ls.day===''?'':String(ls.day)} onChange={e=>updateLessonSchedule(cid,'day',e.target.value===''?'':Number(e.target.value))}>
+                <option value="">요일 선택</option>
+                {dayNames.map((d,i)=><option key={i} value={i}>{d}요일</option>)}
+              </select>
+              <input type="time" className="border border-blue-200 rounded px-2 py-1 text-xs bg-white" value={ls.startTime||''} onChange={e=>updateLessonSchedule(cid,'startTime',e.target.value)}/>
+              <span className="text-blue-400 text-xs">~</span>
+              <input type="time" className="border border-blue-200 rounded px-2 py-1 text-xs bg-white" value={ls.endTime||''} onChange={e=>updateLessonSchedule(cid,'endTime',e.target.value)}/>
+              <button type="button" className="text-red-400 hover:text-red-600 text-xs px-1 ml-auto" onClick={()=>removeLessonSchedule(cid)} title="시간 삭제">✕</button>
+            </div>;
+          })}
+        </div>
+        <p className="text-xs text-slate-400 mt-1">각 수업별로 이 학생이 오는 개인 레슨 요일·시간을 설정하세요. (선택사항)</p>
+      </Field>}
       </div>
       {editTarget&&<Field label="재원 이력">
         <div className="space-y-1 text-xs text-slate-600 border border-gray-200 rounded-lg p-3">
@@ -14374,6 +14466,36 @@ export default function App(){
         }));
       }
     }
+  },[]);
+  // ── 개인 레슨 시간표 마이그레이션 ─────────────────────────────────────────────
+  // lessonSchedules 필드가 없는 기존 학생 데이터에 샘플 시간을 자동으로 채워줍니다.
+  // (기존 캐시 브라우저에서도 개인 레슨 시간표가 바로 보이도록)
+  useEffect(()=>{
+    const needLessonMigrate=students.some(s=>!Array.isArray(s.lessonSchedules));
+    if(!needLessonMigrate)return;
+    setStudents(prev=>{
+      const slotCounter={};
+      return prev.map(s=>{
+        if(Array.isArray(s.lessonSchedules))return s;
+        const schedules=(s.enrolledClasses||[]).flatMap(cid=>{
+          const cls=classes.find(c=>c.id===cid);
+          if(!cls||(cls.days||[]).length===0)return[];
+          const days=cls.days;
+          days.forEach(d=>{const k=`${cid}-${d}`;if(slotCounter[k]===undefined)slotCounter[k]=0;});
+          const minKey=days.map(d=>`${cid}-${d}`).reduce((a,b)=>slotCounter[a]<=slotCounter[b]?a:b);
+          const day=Number(minKey.split('-')[1]);
+          const slotIdx=slotCounter[minKey];
+          slotCounter[minKey]++;
+          const[sh,sm]=(cls.startTime||'14:00').split(':').map(Number);
+          const startMin=sh*60+sm+slotIdx*30;
+          const endMin=startMin+30;
+          if(startMin>=21*60)return[];
+          const fmt=n=>`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
+          return[{classId:cid,day,startTime:fmt(startMin),endTime:fmt(endMin)}];
+        });
+        return{...s,lessonSchedules:schedules};
+      });
+    });
   },[]);
   // 매달 자동 수강료 생성: 로그인 후 이번달 내역이 없으면 전체 재원 학생 수강료를 자동 생성
   useEffect(()=>{
