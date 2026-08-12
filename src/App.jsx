@@ -14173,8 +14173,8 @@ function Sidebar({page,setPage,teachers,students,classes,academyName,role,onLogo
     </div>}
   </div>;
 }
-// ── AI 어시스턴트 챗봇 (데모 모드 — 추후 마무리 작업 시 OpenAI API 연동 필요) ──
-function AIChatbot({students,teachers,classes,attendance,tuitions,events,academyName}){
+// (AI 어시스턴트 챗봇 제거됨)
+function AIChatbot_REMOVED(){
   const[open,setOpen]=useState(false);
   const initMsg=`안녕하세요! ${academyName||'학원'} 전용 AI 어시스턴트입니다 🤖\n\n현재 **데모 모드**로 실행 중이에요.\n학원 데이터를 기반으로 자주 묻는 질문에 답할 수 있어요.\n아래 버튼을 눌러 바로 질문해보세요!`;
   const[messages,setMessages]=useState([{role:'assistant',content:initMsg}]);
@@ -14358,8 +14358,8 @@ export default function App(){
   const[tuitionDaySetting,setTuitionDaySetting]=useLS('hm_tuition_day_setting6',{mode:'joinDate',fixedDay:1});
   const[lastAutoGenMonth,setLastAutoGenMonth]=useLS('hm_last_auto_gen6','');
   // 로그인 / 권한 — role: null(로그아웃) | 'director'(원장) | 'teacher'(강사)
-  const[role,setRole]=useState(null);
-  const[loggedInTeacherId,setLoggedInTeacherId]=useState(null);
+  const[role,setRole]=useLS('hm_role6',null);
+  const[loggedInTeacherId,setLoggedInTeacherId]=useLS('hm_logged_teacher_id6',null);
   const[accounts,setAccounts]=useLS('hm_accounts1',{director:{id:'director',pw:'1234'},teacher:{id:'teacher',pw:'5678'}});
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
   const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
@@ -14583,7 +14583,7 @@ export default function App(){
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${role==='director'?'bg-[#1e3a5f] text-white':'bg-blue-100 text-blue-700'}`}>{role==='director'?'🏫 원장':`👨‍🏫 ${loggedInTeacherId?(teachers.find(t=>t.id===loggedInTeacherId)?.name||'강사'):'강사'}`}</span>
           <span className="text-xs text-slate-700 font-semibold">{(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})()}</span>
           {role==='director'&&<button onClick={()=>setPinModalOpen(true)} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">🔐 계정 변경</button>}
-          {role==='director'&&!isBlank&&<button onClick={reset} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">데이터 초기화</button>}
+          {role==='director'&&<button onClick={reset} className="text-xs text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-100 font-medium">데이터 초기화</button>}
         </div>
       </div>
       {hasSampleData&&<div style={{background:'#fef3c7',borderBottom:'1px solid #fcd34d',padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
@@ -14638,6 +14638,5 @@ export default function App(){
         />}
       </main>
     </div>
-    <AIChatbot students={students} teachers={teachers} classes={classes} attendance={attendance} tuitions={tuitions} events={events} academyName={academyName}/>
   </div>;
 }
