@@ -9529,14 +9529,9 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
     setEditNoteIdx(null);setEditNoteText('');
   };
   const deleteNote=idx=>{setForm(f=>({...f,progressNotes:(f.progressNotes||[]).filter((_,i)=>i!==idx)}));if(editNoteIdx===idx){setEditNoteIdx(null);setEditNoteText('');}};
-  const updateLessonSchedule=(cid,field,val)=>{
-    setForm(f=>{
-      const prev=(f.lessonSchedules||[]).filter(ls=>ls.classId!==cid);
-      const existing=(f.lessonSchedules||[]).find(ls=>ls.classId===cid)||{classId:cid,day:'',startTime:'',endTime:''};
-      return{...f,lessonSchedules:[...prev,{...existing,[field]:val}]};
-    });
-  };
-  const removeLessonSchedule=cid=>setForm(f=>({...f,lessonSchedules:(f.lessonSchedules||[]).filter(ls=>ls.classId!==cid)}));
+  const addLessonSlot=cid=>setForm(f=>({...f,lessonSchedules:[...(f.lessonSchedules||[]),{classId:cid,day:'',startTime:'',endTime:''}]}));
+  const updateLessonSlot=(idx,field,val)=>setForm(f=>{const ls=[...(f.lessonSchedules||[])];ls[idx]={...ls[idx],[field]:val};return{...f,lessonSchedules:ls};});
+  const removeLessonSlot=idx=>setForm(f=>({...f,lessonSchedules:(f.lessonSchedules||[]).filter((_,i)=>i!==idx)}));
   const del=id=>{setStudents(prev=>prev.filter(s=>s.id!==id));if(setTuitions)setTuitions(prev=>prev.filter(t=>!(t.studentId===id&&t.status!=='paid')));setConfirmId(null);};
   const getClsName=id=>classes.find(c=>c.id===id)?.name||id;
   const lastLeave=s=>{const h=s.enrollmentHistory||[];return h.length?h[h.length-1].leaveDate:null;};
@@ -9676,26 +9671,34 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
         })}
       </div></Field>
       {(form.enrolledClasses||[]).length>0&&<Field label="개인 레슨 시간 설정">
-        <div className="space-y-2">
+        <div className="space-y-3">
           {(form.enrolledClasses||[]).map(cid=>{
             const cls=classes.find(c=>c.id===cid);
             if(!cls)return null;
-            const ls=(form.lessonSchedules||[]).find(x=>x.classId===cid)||{classId:cid,day:'',startTime:'',endTime:''};
-            const dayNames=['일','월','화','수','목','금','토'];
-            return<div key={cid} className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-              <span className="text-xs font-semibold text-blue-800 w-20 shrink-0 truncate">{cls.name}</span>
-              <select className="border border-blue-200 rounded px-2 py-1 text-xs bg-white" value={ls.day===''?'':String(ls.day)} onChange={e=>updateLessonSchedule(cid,'day',e.target.value===''?'':Number(e.target.value))}>
-                <option value="">요일 선택</option>
-                {dayNames.map((d,i)=><option key={i} value={i}>{d}요일</option>)}
-              </select>
-              <input type="time" className="border border-blue-200 rounded px-2 py-1 text-xs bg-white" value={ls.startTime||''} onChange={e=>updateLessonSchedule(cid,'startTime',e.target.value)}/>
-              <span className="text-blue-400 text-xs">~</span>
-              <input type="time" className="border border-blue-200 rounded px-2 py-1 text-xs bg-white" value={ls.endTime||''} onChange={e=>updateLessonSchedule(cid,'endTime',e.target.value)}/>
-              <button type="button" className="text-red-400 hover:text-red-600 text-xs px-1 ml-auto" onClick={()=>removeLessonSchedule(cid)} title="시간 삭제">✕</button>
+            const clsSlots=(form.lessonSchedules||[]).map((ls,i)=>({...ls,_idx:i})).filter(ls=>ls.classId===cid);
+            const dn=['일','월','화','수','목','금','토'];
+            return<div key={cid} className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold text-blue-800">{cls.name}</span>
+                <button type="button" className="text-xs px-2 py-0.5 rounded bg-blue-200 text-blue-800 hover:bg-blue-300" onClick={()=>addLessonSlot(cid)}>+ 시간 추가</button>
+              </div>
+              {clsSlots.length===0&&<div className="text-xs text-blue-400 py-1">추가 버튼을 눌러 레슨 시간을 등록하세요.</div>}
+              <div className="space-y-1.5">
+                {clsSlots.map(ls=><div key={ls._idx} className="flex items-center gap-1.5">
+                  <select className="border border-blue-200 rounded px-1.5 py-1 text-xs bg-white" value={ls.day===''?'':String(ls.day)} onChange={e=>updateLessonSlot(ls._idx,'day',e.target.value===''?'':Number(e.target.value))}>
+                    <option value="">요일</option>
+                    {dn.map((d,i)=><option key={i} value={i}>{d}요일</option>)}
+                  </select>
+                  <input type="time" className="border border-blue-200 rounded px-1.5 py-1 text-xs bg-white" value={ls.startTime||''} onChange={e=>updateLessonSlot(ls._idx,'startTime',e.target.value)}/>
+                  <span className="text-blue-400 text-xs">~</span>
+                  <input type="time" className="border border-blue-200 rounded px-1.5 py-1 text-xs bg-white" value={ls.endTime||''} onChange={e=>updateLessonSlot(ls._idx,'endTime',e.target.value)}/>
+                  <button type="button" className="text-red-400 hover:text-red-600 text-xs px-1 ml-auto shrink-0" onClick={()=>removeLessonSlot(ls._idx)}>✕</button>
+                </div>)}
+              </div>
             </div>;
           })}
         </div>
-        <p className="text-xs text-slate-400 mt-1">각 수업별로 이 학생이 오는 개인 레슨 요일·시간을 설정하세요. (선택사항)</p>
+        <p className="text-xs text-slate-400 mt-1">수업별로 레슨 요일·시간을 추가하세요. 주 2회 이상도 가능합니다. (선택사항)</p>
       </Field>}
       </div>
       {editTarget&&<Field label="재원 이력">
