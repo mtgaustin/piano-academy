@@ -9205,7 +9205,7 @@ function ClassManagement({classes,setClasses,teachers,students,role}){
     // 수업 박스의 세로 높이를 "실제 수업 시간(분)"에 정확히 비례하도록 계산합니다.
     // (예전에는 수업이 시작하는 시간 한 칸에만 박스를 넣어서, 16:30~17:30처럼 칸 경계를 걸치는
     //  수업도 항상 한 칸 높이로만 보여 "6시~7시"처럼 보이는 문제가 있었습니다 — Austin님 피드백[9] 재수정)
-    const startHour=8,endHour=21;
+    const startHour=8,endHour=23;
     const hours=Array.from({length:endHour-startHour},(_,i)=>i+startHour);
     const cols=[1,2,3,4,5,6];
     // ROW_H(1시간당 높이)를 72px로 넉넉히 잡고, 박스 최소 높이(MIN_BOX_H)를 60px로 둡니다.
@@ -9263,7 +9263,7 @@ function ClassManagement({classes,setClasses,teachers,students,role}){
     </div></div>;
   };
   const LessonScheduleView=()=>{
-    const startHour=8,endHour=21;
+    const startHour=8,endHour=23;
     const hours=Array.from({length:endHour-startHour},(_,i)=>i+startHour);
     const cols=[1,2,3,4,5,6];
     const ROW_H=72,MIN_BOX_H=32;
