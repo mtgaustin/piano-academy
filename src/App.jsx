@@ -9978,8 +9978,23 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
       </div>
     </div>
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="flex gap-2 p-4 border-b border-gray-100">
-        {[['overview','📊 개요'],['income','💚 수입'],['expense','❤️ 지출']].map(([k,l])=><button key={k} className={`tab-btn ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}
+      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="flex gap-2">
+          {[['overview','📊 개요'],['income','💚 수입'],['expense','❤️ 지출']].map(([k,l])=><button key={k} className={`tab-btn ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}
+        </div>
+        <button className={btn('teal')} style={{fontSize:'12px',padding:'5px 14px'}} onClick={()=>{
+          const prevYM=(()=>{const d=new Date(pdfMonth+'-01');d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          const fixedItems=expenses.filter(e=>e.isFixed&&e.date&&e.date.startsWith(prevYM));
+          if(fixedItems.length===0){alert(`${prevYM.replace('-','년 ')}월에 고정지출 항목이 없습니다.\n지출 항목 등록 시 "고정지출" 체크박스를 선택하세요.`);return;}
+          if(!confirm(`${prevYM.replace('-','년 ')}월 고정지출 ${fixedItems.length}건을 ${pdfMonth.replace('-','년 ')}월로 불러오시겠습니까?`))return;
+          const todayStr=today();
+          const newItems=fixedItems.map(e=>{const proposed=`${pdfMonth}${e.date.slice(7)}`;return{...e,id:genId(),date:proposed>todayStr?todayStr:proposed};});
+          const dupCheck=newItems.filter(n=>!expenses.some(e=>e.date.startsWith(pdfMonth)&&e.category===n.category&&e.description===n.description&&e.amount===n.amount));
+          if(dupCheck.length===0){alert('이미 동일한 항목이 이번 달에 등록되어 있습니다.');return;}
+          setExpenses(prev=>[...prev,...dupCheck]);
+          alert(`${dupCheck.length}건을 ${pdfMonth.replace('-','년 ')}월에 추가했습니다.`);
+          setTab('expense');
+        }}>📋 전월 고정지출 불러오기</button>
       </div>
       {tab==='overview'&&<div className="p-5 space-y-6">
         <div className="text-xs text-slate-500 font-medium mb-1">📅 {mMonthLabel} 기준 (우측 조회월 선택기로 변경)</div>
@@ -10011,23 +10026,7 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
         })()}</div>
       </div>}
       {tab==='income'&&<ListTable items={income} type="income" catFilter={incCatFilter} setCatFilter={setIncCatFilter}/>}
-      {tab==='expense'&&<>
-        <div className="px-4 pt-3 pb-1 flex items-center gap-2 border-b border-gray-100">
-          <button className={btn('teal')} style={{fontSize:'12px',padding:'5px 12px'}} onClick={()=>{
-            const prevYM=(()=>{const d=new Date(pdfMonth+'-01');d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
-            const fixedItems=expenses.filter(e=>e.isFixed&&e.date&&e.date.startsWith(prevYM));
-            if(fixedItems.length===0){alert(`${prevYM.replace('-','년 ')}월에 고정 지출 항목이 없습니다.\n지출 항목 등록 시 "고정지출" 체크박스를 선택하세요.`);return;}
-            if(!confirm(`${prevYM.replace('-','년 ')}월 고정지출 ${fixedItems.length}건을 ${pdfMonth.replace('-','년 ')}월로 불러오시겠습니까?`))return;
-            const newItems=fixedItems.map(e=>({...e,id:genId(),date:`${pdfMonth}${e.date.slice(7)}`}));
-            const dupCheck=newItems.filter(n=>!expenses.some(e=>e.date.startsWith(pdfMonth)&&e.category===n.category&&e.description===n.description&&e.amount===n.amount));
-            if(dupCheck.length===0){alert('이미 동일한 항목이 이번 달에 등록되어 있습니다.');return;}
-            setExpenses(prev=>[...prev,...dupCheck]);
-            alert(`${dupCheck.length}건을 이번 달에 추가했습니다.`);
-          }}>📋 전월 고정지출 불러오기</button>
-          <span className="text-xs text-slate-400">고정지출로 등록된 항목을 이번 달로 복사합니다</span>
-        </div>
-        <ListTable items={expenses} type="expense" catFilter={expCatFilter} setCatFilter={setExpCatFilter}/>
-      </>}
+      {tab==='expense'&&<ListTable items={expenses} type="expense" catFilter={expCatFilter} setCatFilter={setExpCatFilter}/>}
     </div>
     <Modal open={modalOpen} onClose={()=>setModalOpen(false)} title={`${editTarget?'수정':'추가'} - ${modalType==='income'?'수입':'지출'}`}>
       <Field label="날짜" required><input className={inp} type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></Field>
