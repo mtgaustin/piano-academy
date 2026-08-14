@@ -10532,10 +10532,10 @@ function AttRow({person,type,classId,cur,statusBtns,setStatus,setAttendance,isWa
         className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${cur?.status===s?color+' ring-2 ring-offset-1':'border-gray-200 text-slate-600 hover:border-gray-300'}`}>{label}</button>)}
     </div></td>
     <td className="px-4 py-3" style={{width:'130px',minWidth:'130px'}}>{cur?<span className={`badge ${_di(cur.status).color}`}>{_di(cur.status).label}</span>:<span className="text-xs text-gray-300">미기록</span>}</td>
-    <td className="px-4 py-3" style={{width:'200px',minWidth:'200px'}}>
-      <div className="flex flex-col gap-1.5">
+    <td className="px-3 py-2" style={{width:showTime&&type==='student'?'260px':'200px',minWidth:showTime&&type==='student'?'260px':'200px'}}>
+      <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <input className="text-xs border border-gray-200 rounded px-2 py-1 w-28" placeholder="비고..." value={cur?.note||''}
+          <input className="text-xs border border-gray-200 rounded px-2 py-1 w-24" placeholder="비고..." value={cur?.note||''}
             onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,note:e.target.value}:a));}}/>
           {type==='student'&&cur?.status==='absent'&&(hasMakeup
             ?<div className="flex items-center gap-1">
@@ -10544,11 +10544,15 @@ function AttRow({person,type,classId,cur,statusBtns,setStatus,setAttendance,isWa
               </div>
             :<button onClick={onAddMakeup} className="text-xs bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 px-2 py-0.5 rounded-full font-medium">+ 보강</button>)}
         </div>
-        {type==='student'&&showTime&&<div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="shrink-0 text-slate-400">등원</span>
-          <input type="time" className="border border-gray-200 rounded px-1.5 py-0.5 text-xs w-20 text-slate-700" value={cur?.arrivalTime||''} onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,arrivalTime:e.target.value}:a));}} placeholder="--:--"/>
-          <span className="shrink-0 text-slate-400">하원</span>
-          <input type="time" className="border border-gray-200 rounded px-1.5 py-0.5 text-xs w-20 text-slate-700" value={cur?.departureTime||''} onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,departureTime:e.target.value}:a));}} placeholder="--:--"/>
+        {type==='student'&&showTime&&<div className="flex flex-col gap-1 mt-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400 shrink-0" style={{width:'24px'}}>등원</span>
+            <input type="time" className="border border-gray-200 rounded px-1.5 py-0.5 text-xs text-slate-700" style={{width:'120px'}} value={cur?.arrivalTime||''} onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,arrivalTime:e.target.value}:a));}}/>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400 shrink-0" style={{width:'24px'}}>하원</span>
+            <input type="time" className="border border-gray-200 rounded px-1.5 py-0.5 text-xs text-slate-700" style={{width:'120px'}} value={cur?.departureTime||''} onChange={e=>{if(cur)setAttendance(prev=>prev.map(a=>a.id===cur.id?{...a,departureTime:e.target.value}:a));}}/>
+          </div>
         </div>}
       </div>
     </td>
