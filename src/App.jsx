@@ -9978,12 +9978,13 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
       </div>
     </div>
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <div className="flex gap-2">
-          {[['overview','📊 개요'],['income','💚 수입'],['expense','❤️ 지출']].map(([k,l])=><button key={k} className={`tab-btn ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}
-        </div>
-        <button className={btn('teal')} style={{fontSize:'12px',padding:'5px 14px'}} onClick={()=>{
-          const prevYM=(()=>{const d=new Date(pdfMonth+'-01');d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+      <div className="flex gap-2 p-4 border-b border-gray-100">
+        {[['overview','📊 개요'],['income','💚 수입'],['expense','❤️ 지출']].map(([k,l])=><button key={k} className={`tab-btn ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}
+      </div>
+      {(()=>{
+        const prevYM=(()=>{const d=new Date(pdfMonth+'-01');d.setMonth(d.getMonth()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+        const fixedCount=expenses.filter(e=>e.isFixed&&e.date&&e.date.startsWith(prevYM)).length;
+        const doImport=()=>{
           const fixedItems=expenses.filter(e=>e.isFixed&&e.date&&e.date.startsWith(prevYM));
           if(fixedItems.length===0){alert(`${prevYM.replace('-','년 ')}월에 고정지출 항목이 없습니다.\n지출 항목 등록 시 "고정지출" 체크박스를 선택하세요.`);return;}
           if(!confirm(`${prevYM.replace('-','년 ')}월 고정지출 ${fixedItems.length}건을 ${pdfMonth.replace('-','년 ')}월로 불러오시겠습니까?`))return;
@@ -9994,8 +9995,20 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
           setExpenses(prev=>[...prev,...dupCheck]);
           alert(`${dupCheck.length}건을 ${pdfMonth.replace('-','년 ')}월에 추가했습니다.`);
           setTab('expense');
-        }}>📋 전월 고정지출 불러오기</button>
-      </div>
+        };
+        return<div className="flex items-center justify-between px-5 py-3 bg-teal-50 border-b border-teal-100">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-teal-800">📋 전월 고정지출 불러오기</span>
+            {fixedCount>0
+              ?<span className="text-xs bg-teal-100 text-teal-700 border border-teal-200 rounded-full px-2 py-0.5 font-medium">{prevYM.replace('-','년 ')}월 고정항목 {fixedCount}건</span>
+              :<span className="text-xs text-teal-500">{prevYM.replace('-','년 ')}월 고정항목 없음</span>}
+          </div>
+          <button onClick={doImport} disabled={fixedCount===0}
+            className={`text-sm font-semibold px-4 py-2 rounded-xl border transition-all ${fixedCount>0?'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 shadow-sm':'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'}`}>
+            이번 달로 복사
+          </button>
+        </div>;
+      })()}
       {tab==='overview'&&<div className="p-5 space-y-6">
         <div className="text-xs text-slate-500 font-medium mb-1">📅 {mMonthLabel} 기준 (우측 조회월 선택기로 변경)</div>
         <div className="grid grid-cols-3 gap-4">
