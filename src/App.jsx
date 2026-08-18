@@ -10059,6 +10059,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
   // 이달 납부현황 안에서 "미납" / "납부완료"를 탭으로 나눠서 보여주기 위한 상태
   // (이미 납부완료한 학생까지 계속 한 화면에 보이면 학생이 많아질수록 찾기 힘들다는 피드백 반영)
   const[monthlySubTab,setMonthlySubTab]=useState('unpaid');
+  const[showLateOnly,setShowLateOnly]=useState(false);
   // 이달 납부현황 정렬
   const[tuSortKey,setTuSortKey]=useState('studentName');
   const[tuSortDir,setTuSortDir]=useState('asc');
@@ -10101,10 +10102,14 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
   const unpaidAmount=monthTuitions.filter(t=>effectiveStatus(t)==='unpaid').reduce((s,t)=>s+Number(t.amount),0);
   const overdueAmount=monthTuitions.filter(t=>effectiveStatus(t)==='overdue').reduce((s,t)=>s+Number(t.amount),0);
   // 미납 탭 = 미납+연체를 함께 보여줌(둘 다 "아직 돈을 못 받은" 상태), 납부완료 탭 = 납부완료만
-  const monthlyTabTuitions=monthTuitions.filter(t=>monthlySubTab==='unpaid'?effectiveStatus(t)!=='paid':effectiveStatus(t)==='paid');
+  // showLateOnly=true 이면 2일 이상 미납 항목만 필터링
+  const monthlyTabTuitions=monthTuitions.filter(t=>monthlySubTab==='unpaid'?effectiveStatus(t)!=='paid':effectiveStatus(t)==='paid').filter(t=>!showLateOnly||isLateOverdue(t));
   const totalPaid=monthTuitions.filter(t=>effectiveStatus(t)==='paid').reduce((s,t)=>s+Number(t.amount),0);
   const expectedTotal=monthTuitions.reduce((s,t)=>s+Number(t.amount),0);
   const isDueSoon=dueDate=>{if(!dueDate)return false;const due=new Date(dueDate);const now=new Date();const diff=(due-now)/(1000*60*60*24);return diff>=0&&diff<=3;};
+  // 2일 이상 미납: 납부기한이 오늘 기준 2일 이상 지난 미납/연체 항목
+  const isLateOverdue=t=>effectiveStatus(t)!=='paid'&&t.dueDate&&(new Date(today())-new Date(t.dueDate))/(1000*60*60*24)>=2;
+  const lateOverdueCount=monthTuitions.filter(isLateOverdue).length;
   const unpaidAll=tuitions.filter(t=>effectiveStatus(t)!=='paid');
   // [12][13] 연체 알림 탭: 미래 월 제외, 연체 항목만 표시
   const todayMonth=today().slice(0,7);
@@ -10315,13 +10320,19 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
         </button>
       </div>
       {tab==='monthly'&&<div>
-        <div className="flex gap-2 px-4 pt-4 pb-3 mb-1 border-b border-gray-100">
-          <button className={`tab-btn ${monthlySubTab==='unpaid'?'active':''}`} onClick={()=>setMonthlySubTab('unpaid')}>
+        <div className="flex items-center gap-2 px-4 pt-4 pb-3 mb-1 border-b border-gray-100 flex-wrap">
+          <button className={`tab-btn ${monthlySubTab==='unpaid'?'active':''}`} onClick={()=>{setMonthlySubTab('unpaid');setShowLateOnly(false);}}>
             ⚠️ 미납/연체 <span className="ml-1 bg-yellow-100 text-yellow-700 rounded-full text-xs px-1.5 py-0.5">{unpaidCount+overdueCount}</span>
           </button>
-          <button className={`tab-btn ${monthlySubTab==='paid'?'active':''}`} onClick={()=>setMonthlySubTab('paid')}>
+          <button className={`tab-btn ${monthlySubTab==='paid'?'active':''}`} onClick={()=>{setMonthlySubTab('paid');setShowLateOnly(false);}}>
             ✅ 납부완료 <span className="ml-1 bg-green-100 text-green-700 rounded-full text-xs px-1.5 py-0.5">{paidCount}</span>
           </button>
+          {monthlySubTab==='unpaid'&&lateOverdueCount>0&&<label className="flex items-center gap-1.5 cursor-pointer select-none ml-auto" title="납부기한 2일 이상 초과된 항목만 표시">
+            <input type="checkbox" checked={showLateOnly} onChange={e=>setShowLateOnly(e.target.checked)} className="accent-red-600 w-4 h-4"/>
+            <span className={`text-xs font-semibold px-2 py-1 rounded-lg border transition-all ${showLateOnly?'bg-red-600 text-white border-red-600':'bg-red-50 text-red-700 border-red-200'}`}>
+              재발송 대상 {lateOverdueCount}명
+            </span>
+          </label>}
         </div>
         {monthlyTabTuitions.length===0
         ?<div className="p-12 text-center text-slate-600"><div className="text-4xl mb-3">💳</div><div className="font-medium">{monthlySubTab==='unpaid'?'미납/연체 내역이 없습니다':'납부완료 내역이 없습니다'}</div></div>
@@ -10346,7 +10357,8 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
             const student=getStudentInfo(t.studentId);
             const es=effectiveStatus(t);
             const dueSoon=es!=='paid'&&isDueSoon(t.dueDate);
-            return<tr key={t.id} className={`table-row border-t border-gray-50 ${dueSoon?'bg-amber-50':es==='overdue'?'bg-red-50':''}`}>
+            const lateRow=isLateOverdue(t);
+            return<tr key={t.id} className={`table-row border-t border-gray-50 ${lateRow?'bg-red-100':dueSoon?'bg-amber-50':es==='overdue'?'bg-red-50':''}`} style={lateRow?{borderLeft:'3px solid #ef4444'}:{}}>
               <td className="px-4 py-3 font-semibold text-slate-900">{t.studentName||student.name||'-'}{students.find(s=>s.id===t.studentId)?.status==='withdrawn'&&<span className="ml-1.5 text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 font-normal">퇴원</span>}</td>
               <td className="px-4 py-3 text-slate-600 text-sm">{student.level||student.grade||'-'}</td>
               <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">{fWon(t.amount)}{t.isProrated&&<span className="text-xs text-amber-600 font-normal ml-1" title={t.baseFee?`정액 ${fWon(t.baseFee)}`:''}>(일할)</span>}</td>
