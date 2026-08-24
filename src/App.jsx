@@ -10686,6 +10686,31 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
     return conflicts;
   };
   const[showTime,setShowTime]=useState(false);
+  const[dismissTenMin,setDismissTenMin]=useState(false);
+  // 1분마다 tick을 증가시켜 10분 미출결 배너를 자동 갱신
+  const[tick,setTick]=useState(0);
+  useEffect(()=>{const id=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(id);},[]);
+  useEffect(()=>{setDismissTenMin(false);},[date]);
+  // 10분 이상 지난 수업 중 출결 미처리 학생 목록 (오늘 날짜일 때만 계산)
+  const tenMinWarnItems=(()=>{
+    if(date!==today())return[];
+    const now=new Date();const nowMin=now.getHours()*60+now.getMinutes();const todayDow=now.getDay();
+    const result=[];
+    for(const cls of classes){
+      if(cls.closeDate&&cls.closeDate<=today())continue;
+      if(!(cls.days||[]).includes(todayDow))continue;
+      if(!cls.startTime)continue;
+      const[sh,sm]=cls.startTime.split(':').map(Number);const classStartMin=sh*60+sm;
+      const diff=nowMin-classStartMin;
+      if(diff<10||diff>120)continue; // 수업 시작 10분~2시간 내에만
+      const classStudents=students.filter(s=>s.status!=='withdrawn'&&(s.enrolledClasses||[]).includes(cls.id)&&(!s.joinDate||s.joinDate<=today()));
+      const unchecked=classStudents.filter(s=>!attendance.find(a=>a.date===date&&a.type==='student'&&a.refId===s.id&&a.classId===cls.id));
+      if(unchecked.length>0)result.push({cls,unchecked,diff});
+    }
+    return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  })();// tick은 의존성으로 사용되진 않지만 1분마다 재계산되도록 참조
+  void tick;
   const[attTeaSortKey,setAttTeaSortKey]=useState('name');
   const[attTeaSortDir,setAttTeaSortDir]=useState('asc');
   const attTeaSortField=k=>{if(attTeaSortKey===k)setAttTeaSortDir(d=>d==='asc'?'desc':'asc');else{setAttTeaSortKey(k);setAttTeaSortDir('asc');}};
@@ -10804,6 +10829,26 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
         <span className="text-xs text-orange-500">({showWarnOnly?'경고 학생만 표시 중':'전체 학생 표시 중'})</span>
       </div>
       <button onClick={()=>setShowWarnOnly(v=>!v)} className="text-xs px-3 py-1 rounded-full border border-orange-300 bg-white text-orange-700 hover:bg-orange-100 font-medium">{showWarnOnly?'전체보기':'경고만 보기'}</button>
+    </div>}
+    {/* 10분 미출결 경고 배너 */}
+    {tab==='student'&&!dismissTenMin&&tenMinWarnItems.length>0&&<div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <span className="text-red-600 text-lg leading-none mt-0.5">🚨</span>
+          <div>
+            <div className="font-bold text-red-800 text-sm">수업 시작 후 미출결 학생이 있습니다</div>
+            <div className="text-xs text-red-600 mt-0.5">수업 시작 10분 이상 경과 · 출결 미처리 학생을 확인하세요</div>
+            <div className="mt-2 space-y-1">
+              {tenMinWarnItems.map(({cls,unchecked,diff})=><div key={cls.id} className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-red-700 bg-red-100 rounded px-2 py-0.5">{cls.name}</span>
+                <span className="text-xs text-red-600">시작 {diff}분 경과</span>
+                <span className="text-xs text-red-800 font-medium">{unchecked.map(s=>s.name).join(', ')} ({unchecked.length}명)</span>
+              </div>)}
+            </div>
+          </div>
+        </div>
+        <button onClick={()=>setDismissTenMin(true)} className="text-red-400 hover:text-red-700 text-lg font-bold leading-none shrink-0 mt-0.5">×</button>
+      </div>
     </div>}
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="flex gap-2 p-4 border-b border-gray-100">
