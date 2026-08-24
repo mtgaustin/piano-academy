@@ -10054,8 +10054,9 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
 }
 
 // ── 학원비 관리 ───────────────────────────────────────────────────────────
-function TuitionManagement({tuitions,setTuitions,students,classes,income,setIncome,tuitionDaySetting}){
+function TuitionManagement({tuitions,setTuitions,students,classes,income,setIncome,tuitionDaySetting,notifications,setNotifications,academyName}){
   const[tab,setTab]=useState('monthly');
+  const[sendModal,setSendModal]=useState(null); // 발송 미리보기 모달 (tuition record)
   // 이달 납부현황 안에서 "미납" / "납부완료"를 탭으로 나눠서 보여주기 위한 상태
   // (이미 납부완료한 학생까지 계속 한 화면에 보이면 학생이 많아질수록 찾기 힘들다는 피드백 반영)
   const[monthlySubTab,setMonthlySubTab]=useState('unpaid');
@@ -10256,8 +10257,14 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
   const genSmsText=t=>{
     const student=getStudentInfo(t.studentId);
     const[y,m]=t.month.split('-');
-    const receiver=student.grade==='성인'?`${student.name}님`:`${student.parentName||'학부모'}님께`;
-    return`[${receiver}]\n${y}년 ${m}월 수강료 ${fWon(t.amount)} 납부 안내드립니다.\n납부기한: ${t.dueDate||'-'}${effectiveStatus(t)==='overdue'?'\n⚠️ 연체 중입니다. 빠른 납부 부탁드립니다.':''}\n감사합니다. 학원 드림`;
+    const receiver=student.grade==='성인'?`${student.name}님`:`${student.parentName||'학부모'}님`;
+    const acName=academyName||'학원';
+    const isOverdue=effectiveStatus(t)==='overdue';
+    return`[${acName}]\n안녕하세요 ${receiver}, ${acName}입니다.\n${y}년 ${m}월 수강료 ${fWon(t.amount)} 납부 안내드립니다.${t.textbookFee?`\n교재비 ${fWon(t.textbookFee)} 포함 시 합계 ${fWon(Number(t.amount)+Number(t.textbookFee))}`:''}\n납부기한: ${t.dueDate?t.dueDate+' 까지':'미정'}${isOverdue?'\n⚠️ 납부기한이 지났습니다. 빠른 납부 부탁드립니다.':''}\n\n카드·계좌이체·현금 모두 가능합니다.\n감사합니다 🙏`;
+  };
+  const recordNotification=(t,channel='manual')=>{
+    if(!setNotifications)return;
+    setNotifications(prev=>[...prev,{id:genId(),type:'tuition',studentId:t.studentId,studentName:t.studentName||getStudentInfo(t.studentId).name||'',tuitionId:t.id,month:t.month,amount:t.amount,sentAt:new Date().toISOString(),channel}]);
   };
   const printTuitionPDF=()=>{
     const[y,m]=viewMonth.split('-');
@@ -10369,6 +10376,7 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
               <td className="px-4 py-3">{statusBadge(es)}</td>
               <td className="px-4 py-3"><div className="flex gap-1.5 flex-wrap">
                 {t.status!=='paid'&&<button className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-medium whitespace-nowrap" onClick={()=>openPayment(t)}>✅ 납부처리</button>}
+                {t.status!=='paid'&&<button className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 font-medium whitespace-nowrap" onClick={()=>setSendModal(t)}>📨 발송</button>}
                 <button className="text-xs px-2 py-1 bg-gray-100 text-slate-700 rounded-lg hover:bg-gray-200" onClick={()=>openEdit(t)}>수정</button>
                 <button className="text-xs px-2 py-1 bg-red-50 text-red-500 rounded-lg hover:bg-red-100" onClick={()=>setConfirmItem(t)}>삭제</button>
               </div></td>
@@ -10460,6 +10468,49 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
         }
       </div>}
     </div>
+    {/* ── 수강료 발송 미리보기 모달 ── */}
+    {sendModal&&(()=>{
+      const smsText=genSmsText(sendModal);
+      const student=getStudentInfo(sendModal.studentId);
+      const[y,m]=sendModal.month.split('-');
+      const lastSent=(notifications||[]).filter(n=>n.type==='tuition'&&n.tuitionId===sendModal.id).sort((a,b)=>b.sentAt.localeCompare(a.sentAt))[0];
+      return<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={e=>{if(e.target===e.currentTarget)setSendModal(null);}}>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div>
+              <div className="font-bold text-slate-900">📨 수강료 알림 발송</div>
+              <div className="text-xs text-slate-500 mt-0.5">{student.name} · {y}년 {m}월</div>
+            </div>
+            <button onClick={()=>setSendModal(null)} className="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">×</button>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div>
+              <div className="text-xs font-semibold text-slate-500 mb-2">발송 대상</div>
+              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3">
+                <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm shrink-0">{student.name?.[0]||'?'}</div>
+                <div>
+                  <div className="font-semibold text-slate-800 text-sm">{student.grade==='성인'?student.name:`${student.parentName||'학부모'} (${student.name} 학부모님)`}</div>
+                  <div className="text-xs text-slate-500">{student.grade==='성인'?student.phone:student.parentPhone} · {fWon(sendModal.amount)}{sendModal.textbookFee?` + 교재비 ${fWon(sendModal.textbookFee)}`:''}</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 mb-2">메시지 미리보기</div>
+              <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap font-sans leading-relaxed">{smsText}</pre>
+            </div>
+            {lastSent&&<div className="text-xs text-slate-400 text-center">마지막 발송: {new Date(lastSent.sentAt).toLocaleString('ko-KR')}</div>}
+          </div>
+          <div className="px-6 pb-5 flex gap-2">
+            <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={()=>{
+              copyToClipboard(smsText,'메시지가 복사됐습니다! 카카오톡 또는 문자에 붙여넣기 하세요.');
+              recordNotification(sendModal,'manual');
+              setSendModal(null);
+            }}>📋 복사하고 닫기</button>
+            <button className="px-4 py-2.5 bg-gray-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-gray-200" onClick={()=>setSendModal(null)}>취소</button>
+          </div>
+        </div>
+      </div>;
+    })()}
     <Modal open={modalOpen} onClose={()=>setModalOpen(false)} title={editTarget?'납부 내역 수정':'납부 등록'}>
       <Field label="학생" required>
         <select className={inp} value={form.studentId} onChange={e=>{
@@ -12327,8 +12378,9 @@ function CalendarView({events,setEvents,consultations,makeups,notices,setNotices
 }
 
 // ── 보강 관리 ────────────────────────────────────────────────────────────
-function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,loggedInTeacherId}){
+function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,loggedInTeacherId,notifications,setNotifications,academyName}){
   const[modalOpen,setModalOpen]=useState(false);
+  const[sendMakeupModal,setSendMakeupModal]=useState(null);
   const[editTarget,setEditTarget]=useState(null);
   const[confirmId,setConfirmId]=useState(null);
   const[filter,setFilter]=useState('all');
@@ -12602,9 +12654,10 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
               </span>
             </td>
             <td className="px-4 py-3 text-xs text-slate-600">{m.note}</td>
-            <td className="px-4 py-3 flex gap-1">
+            <td className="px-4 py-3 flex gap-1 flex-wrap">
               {m.status==='unscheduled'&&<button onClick={()=>updateStatus(m.id,'pending')} className={btn('blue')} style={{padding:'4px 8px',fontSize:'11px'}}>예약</button>}
               {m.status==='pending'&&<button onClick={()=>updateStatus(m.id,'completed')} className={btn('green')} style={{padding:'4px 8px',fontSize:'11px'}}>완료</button>}
+              {(m.status==='pending')&&m.makeupDate&&<button onClick={()=>setSendMakeupModal(m)} className="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border border-indigo-200 font-medium" style={{fontSize:'11px'}}>📨 알림</button>}
               <button onClick={()=>openEdit(m)} className={btn('gray')} style={{padding:'4px 8px',fontSize:'11px'}}>수정</button>
               <button onClick={()=>setConfirmId(m.id)} className="text-xs px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 border border-red-200" style={{fontSize:'11px'}}>삭제</button>
             </td>
@@ -12615,6 +12668,51 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
       </div>
     </div>
 
+    {/* ── 보강 알림 발송 미리보기 모달 ── */}
+    {sendMakeupModal&&(()=>{
+      const m=sendMakeupModal;
+      const student=students.find(s=>s.id===m.studentId)||{};
+      const acName=academyName||'학원';
+      const receiver=student.grade==='성인'?`${student.name}님`:`${student.parentName||'학부모'}님`;
+      const smsText=`[${acName}]\n안녕하세요 ${receiver}, ${acName}입니다.\n${m.studentName} 학생의 보강 수업이 확정되었습니다.\n\n▪ 결석일: ${m.absenceDate||'-'}\n▪ 보강일: ${m.makeupDate}${m.makeupStartTime?` ${m.makeupStartTime}~${m.makeupEndTime||''}`:''}\n${m.room?`▪ 강의실: ${m.room}\n`:''}${m.note?`▪ 비고: ${m.note}\n`:''}\n일정 변경이 필요하시면 학원으로 연락 부탁드립니다.\n감사합니다 🙏`;
+      const lastSent=(notifications||[]).filter(n=>n.type==='makeup'&&n.makeupId===m.id).sort((a,b)=>b.sentAt.localeCompare(a.sentAt))[0];
+      return<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={e=>{if(e.target===e.currentTarget)setSendMakeupModal(null);}}>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div>
+              <div className="font-bold text-slate-900">📨 보강 확정 알림 발송</div>
+              <div className="text-xs text-slate-500 mt-0.5">{m.studentName} · {m.makeupDate}</div>
+            </div>
+            <button onClick={()=>setSendMakeupModal(null)} className="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">×</button>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div>
+              <div className="text-xs font-semibold text-slate-500 mb-2">발송 대상</div>
+              <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3">
+                <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm shrink-0">{m.studentName?.[0]||'?'}</div>
+                <div>
+                  <div className="font-semibold text-slate-800 text-sm">{student.grade==='성인'?student.name:`${student.parentName||'학부모'} (${m.studentName} 학부모님)`}</div>
+                  <div className="text-xs text-slate-500">{student.grade==='성인'?student.phone:student.parentPhone}</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 mb-2">메시지 미리보기</div>
+              <pre className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap font-sans leading-relaxed">{smsText}</pre>
+            </div>
+            {lastSent&&<div className="text-xs text-slate-400 text-center">마지막 발송: {new Date(lastSent.sentAt).toLocaleString('ko-KR')}</div>}
+          </div>
+          <div className="px-6 pb-5 flex gap-2">
+            <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={()=>{
+              copyToClipboard(smsText,'보강 알림 메시지가 복사됐습니다! 카카오톡 또는 문자에 붙여넣기 하세요.');
+              if(setNotifications)setNotifications(prev=>[...prev,{id:genId(),type:'makeup',studentId:m.studentId,studentName:m.studentName,makeupId:m.id,makeupDate:m.makeupDate,sentAt:new Date().toISOString(),channel:'manual'}]);
+              setSendMakeupModal(null);
+            }}>📋 복사하고 닫기</button>
+            <button className="px-4 py-2.5 bg-gray-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-gray-200" onClick={()=>setSendMakeupModal(null)}>취소</button>
+          </div>
+        </div>
+      </div>;
+    })()}
     <Modal open={modalOpen} onClose={()=>setModalOpen(false)} title={editTarget?'보강 수정':'보강 추가'}>
       <div className="space-y-4">
         <Field label="학생" required>
@@ -14423,6 +14521,7 @@ export default function App(){
   const[baseUrl,setBaseUrl]=useLS('hm_base_url','학부모앱.html');
   const[tuitionDaySetting,setTuitionDaySetting]=useLS('hm_tuition_day_setting6',{mode:'joinDate',fixedDay:1});
   const[lastAutoGenMonth,setLastAutoGenMonth]=useLS('hm_last_auto_gen6','');
+  const[notifications,setNotifications]=useLS('hm_notifications6',[]);
   // 로그인 / 권한 — role: null(로그아웃) | 'director'(원장) | 'teacher'(강사)
   const[role,setRole]=useLS('hm_role6',null);
   const[loggedInTeacherId,setLoggedInTeacherId]=useLS('hm_logged_teacher_id6',null);
@@ -14663,14 +14762,14 @@ export default function App(){
         {page==='students'&&<StudentManagement students={students} setStudents={setStudents} classes={classes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} tuitions={tuitions} setTuitions={setTuitions} role={role} loggedInTeacherId={loggedInTeacherId} tuitionDaySetting={tuitionDaySetting}/>}
         {page==='expense_submit'&&<ExpenseSubmit expenses={expenses} setExpenses={setExpenses} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='budget'&&<BudgetManagement income={income} setIncome={setIncome} expenses={expenses} setExpenses={setExpenses}/>}
-        {page==='tuition'&&<TuitionManagement tuitions={tuitions} setTuitions={setTuitions} students={students} classes={classes} income={income} setIncome={setIncome} tuitionDaySetting={tuitionDaySetting}/>}
+        {page==='tuition'&&<TuitionManagement tuitions={tuitions} setTuitions={setTuitions} students={students} classes={classes} income={income} setIncome={setIncome} tuitionDaySetting={tuitionDaySetting} notifications={notifications} setNotifications={setNotifications} academyName={academyName}/>}
         {page==='attendance'&&<AttendanceManagement attendance={attendance} setAttendance={setAttendance} teachers={teachers} students={students} classes={classes} attContext={attContext} clearAttContext={()=>setAttContext(null)} makeups={makeups} setMakeups={setMakeups} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='notices'&&<NoticeManagement notices={notices} setNotices={setNotices} students={students} classes={classes} academyName={academyName} baseUrl={baseUrl}/>}
         {page==='videos'&&<VideoManagement videos={videos} setVideos={setVideos} students={students} teachers={teachers} academyName={academyName} baseUrl={baseUrl}/>}
         {page==='tax'&&<TaxManagement income={income} expenses={expenses}/>}
         {page==='consultation'&&<ConsultationManagement consultations={consultations} setConsultations={setConsultations} consultContext={consultContext} clearConsultContext={()=>setConsultContext(null)} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='calendar'&&<CalendarView events={events} setEvents={setEvents} consultations={consultations} makeups={makeups} notices={notices} setNotices={setNotices} role={role} loggedInTeacherId={loggedInTeacherId} students={students} classes={classes}/>}
-        {page==='makeup'&&<MakeupManagement makeups={makeups} setMakeups={setMakeups} students={students} classes={classes} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
+        {page==='makeup'&&<MakeupManagement makeups={makeups} setMakeups={setMakeups} students={students} classes={classes} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId} notifications={notifications} setNotifications={setNotifications} academyName={academyName}/>}
         {page==='withdrawal'&&<StudentManagement students={students} setStudents={setStudents} classes={classes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} tuitions={tuitions} setTuitions={setTuitions} role={role} loggedInTeacherId={loggedInTeacherId} tuitionDaySetting={tuitionDaySetting} defaultTab="withdrawn"/>}
         {page==='payslip'&&<PayslipManagement teachers={teachers} academyName={academyName} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='achievement'&&<AchievementManagement achievements={achievements} setAchievements={setAchievements} students={students}/>}
