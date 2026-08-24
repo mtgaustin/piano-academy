@@ -10687,6 +10687,7 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
   };
   const[showTime,setShowTime]=useState(false);
   const[dismissTenMin,setDismissTenMin]=useState(false);
+  const[scheduleView,setScheduleView]=useState(false);
   // 1분마다 tick을 증가시켜 10분 미출결 배너를 자동 갱신
   const[tick,setTick]=useState(0);
   useEffect(()=>{const id=setInterval(()=>setTick(t=>t+1),60000);return()=>clearInterval(id);},[]);
@@ -10864,10 +10865,13 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
         </select>
         <input className={inp} placeholder="이름 검색..." value={nameSearch} onChange={e=>setNameSearch(e.target.value)} style={{width:'140px'}}/>
         {nameSearch&&<button onClick={()=>setNameSearch('')} className="text-xs text-slate-400 hover:text-slate-600">✕</button>}
-        <label className="flex items-center gap-1.5 cursor-pointer select-none ml-auto" title="등원/하원 시간 입력란 표시">
-          <input type="checkbox" checked={showTime} onChange={e=>setShowTime(e.target.checked)} className="accent-indigo-600 w-4 h-4"/>
-          <span className="text-xs font-medium text-slate-600">⏰ 시간기록</span>
-        </label>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={()=>setScheduleView(v=>!v)} className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${scheduleView?'bg-sky-600 text-white border-sky-600':'bg-white text-slate-600 border-gray-200 hover:border-sky-300 hover:text-sky-700'}`} title="오늘 수업하는 반을 시간순 카드로 보기">📅 스케줄 뷰</button>
+          <label className="flex items-center gap-1.5 cursor-pointer select-none" title="등원/하원 시간 입력란 표시">
+            <input type="checkbox" checked={showTime} onChange={e=>setShowTime(e.target.checked)} className="accent-indigo-600 w-4 h-4"/>
+            <span className="text-xs font-medium text-slate-600">⏰ 시간기록</span>
+          </label>
+        </div>
       </div>}
       {tab==='teacher'&&<div className="overflow-x-auto overflow-y-auto tbl-scroll" style={{maxHeight:'calc(100vh - 280px)'}}><table className="w-full text-sm app-table">
         <thead className="bg-[#f1f5f9] text-slate-600 text-xs"><tr>
@@ -10906,7 +10910,58 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
           return<AttRow key={p.id} person={p} type="teacher" cur={getStatus('teacher',p.id)} statusBtns={isResigned?[]:teacherStatusBtns} setStatus={setStatus} setAttendance={setAttendance} onAddMakeup={null} hasMakeup={false} teacherBadge={badge} teacherBadgeColor={badgeColor}/>;
         })}</tbody>
       </table></div>}
-      {tab==='student'&&<div className="overflow-x-auto overflow-y-auto tbl-scroll" style={{maxHeight:'calc(100vh - 280px)'}}><table className="w-full text-sm app-table">
+      {tab==='student'&&scheduleView&&(()=>{
+        const selDow=new Date(date).getDay();
+        const todayClasses=(role==='teacher'&&loggedInTeacherId?classes.filter(c=>c.teacherId===loggedInTeacherId):classes).filter(c=>!(c.closeDate&&c.closeDate<=date)&&(c.days||[]).includes(selDow)).sort((a,b)=>(a.startTime||'').localeCompare(b.startTime||''));
+        if(todayClasses.length===0)return<div className="p-12 text-center text-slate-500"><div className="text-3xl mb-2">📅</div><div className="font-medium">선택한 날짜에 수업이 없습니다</div></div>;
+        const statusLabel={present:'출석',absent:'결석',late:'지각',leave:'조퇴'};
+        const statusColor={present:'bg-green-100 text-green-700',absent:'bg-red-100 text-red-700',late:'bg-yellow-100 text-yellow-700',leave:'bg-orange-100 text-orange-700'};
+        return<div className="overflow-y-auto tbl-scroll p-4 space-y-3" style={{maxHeight:'calc(100vh - 300px)'}}>
+          {todayClasses.map(c=>{
+            const teacher=teachers.find(t=>t.id===c.teacherId);
+            const clsStudents=students.filter(s=>s.status!=='withdrawn'&&(s.enrolledClasses||[]).includes(c.id)&&(!s.joinDate||s.joinDate<=date));
+            const statusCounts={present:0,absent:0,late:0,leave:0,unchecked:0};
+            clsStudents.forEach(s=>{const st=getStatus('student',s.id,c.id)?.status;if(st&&statusCounts[st]!==undefined)statusCounts[st]++;else statusCounts.unchecked++;});
+            return<div key={c.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-gray-100">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-bold text-slate-900">🎹 {c.name}</span>
+                  {c.startTime&&<span className="text-xs bg-sky-100 text-sky-700 rounded-full px-2 py-0.5 font-medium">{c.startTime}{c.endTime?`~${c.endTime}`:''}</span>}
+                  {c.room&&<span className="text-xs text-slate-500">{c.room}</span>}
+                  {teacher&&<span className="text-xs text-slate-500">{teacher.name} 선생님</span>}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs">
+                  {statusCounts.unchecked>0&&<span className="bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium">미처리 {statusCounts.unchecked}</span>}
+                  {statusCounts.present>0&&<span className="bg-green-100 text-green-700 rounded px-1.5 py-0.5 font-medium">출석 {statusCounts.present}</span>}
+                  {statusCounts.absent>0&&<span className="bg-red-100 text-red-700 rounded px-1.5 py-0.5 font-medium">결석 {statusCounts.absent}</span>}
+                  {statusCounts.late>0&&<span className="bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5 font-medium">지각 {statusCounts.late}</span>}
+                </div>
+              </div>
+              <div className="px-4 py-3">
+                {clsStudents.length===0?<div className="text-xs text-slate-400 text-center py-2">등록된 학생 없음</div>:
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[...clsStudents].sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(s=>{
+                    const cur=getStatus('student',s.id,c.id);
+                    const st=cur?.status;
+                    return<div key={s.id} className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 border ${st?'border-transparent'+(st==='present'?' bg-green-50':st==='absent'?' bg-red-50':st==='late'?' bg-yellow-50':' bg-orange-50'):'border-gray-200 bg-white'}`}>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {liveWarnIds.includes(s.id)&&<span className="text-orange-500 text-xs shrink-0">⚠</span>}
+                        <span className="text-sm font-semibold text-slate-800 truncate">{s.name}</span>
+                        {st&&<span className={`text-xs rounded px-1.5 py-0.5 font-medium shrink-0 ${statusColor[st]||''}`}>{statusLabel[st]||st}</span>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={()=>setStatus('student',s.id,'present','',c.id)} className="text-xs w-6 h-6 rounded-full flex items-center justify-center bg-green-100 hover:bg-green-200 text-green-700 font-bold" title="출석">✓</button>
+                        <button onClick={()=>setStatus('student',s.id,'absent','',c.id)} className="text-xs w-6 h-6 rounded-full flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-700 font-bold" title="결석">✗</button>
+                        <button onClick={()=>setStatus('student',s.id,'late','',c.id)} className="text-xs w-6 h-6 rounded-full flex items-center justify-center bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold" title="지각">!</button>
+                      </div>
+                    </div>;})}
+                </div>}
+              </div>
+            </div>;
+          })}
+        </div>;
+      })()}
+      {tab==='student'&&!scheduleView&&<div className="overflow-x-auto overflow-y-auto tbl-scroll" style={{maxHeight:'calc(100vh - 280px)'}}><table className="w-full text-sm app-table">
         <thead className="bg-[#f1f5f9] text-slate-600 text-xs"><tr>
           <th className="px-4 py-3 text-left font-medium cursor-pointer select-none" style={{width:'110px',width:'110px'}} onClick={()=>attStuSortField('name')}>이름{attStuArrow('name')}</th>
           <th className="px-4 py-3 text-left font-medium" style={{width:'180px'}}>레벨</th>
