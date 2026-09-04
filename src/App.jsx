@@ -10500,13 +10500,26 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
             </div>
             {lastSent&&<div className="text-xs text-slate-400 text-center">마지막 발송: {new Date(lastSent.sentAt).toLocaleString('ko-KR')}</div>}
           </div>
-          <div className="px-6 pb-5 flex gap-2">
-            <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={()=>{
-              copyToClipboard(smsText,'메시지가 복사됐습니다! 카카오톡 또는 문자에 붙여넣기 하세요.');
-              recordNotification(sendModal,'manual');
-              setSendModal(null);
-            }}>📋 복사하고 닫기</button>
-            <button className="px-4 py-2.5 bg-gray-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-gray-200" onClick={()=>setSendModal(null)}>취소</button>
+          <div className="px-6 pb-5 space-y-2">
+            {solapiConfig?.enabled&&solapiConfig?.apiKey?(
+              <button className="w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-all" onClick={async()=>{
+                const phone=student.grade==='성인'?student.phone:student.parentPhone;
+                if(!phone){alert('수신자 전화번호가 없습니다.');return;}
+                const r=await sendSMSAuto(phone,smsText);
+                if(r.ok){recordNotification(sendModal,'sms');setSendModal(null);alert('✅ SMS 발송 완료!');}
+                else alert('❌ SMS 발송 실패: '+(r.reason||'오류'));
+              }}>📱 SMS 자동 발송</button>
+            ):(
+              <div className="text-center text-xs text-slate-400 py-1">SMS 자동 발송하려면 설정 → SMS 알림 설정에서 API 키를 등록하세요</div>
+            )}
+            <div className="flex gap-2">
+              <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={()=>{
+                copyToClipboard(smsText,'메시지가 복사됐습니다! 카카오톡 또는 문자에 붙여넣기 하세요.');
+                recordNotification(sendModal,'manual');
+                setSendModal(null);
+              }}>📋 복사하고 닫기</button>
+              <button className="px-4 py-2.5 bg-gray-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-gray-200" onClick={()=>setSendModal(null)}>취소</button>
+            </div>
           </div>
         </div>
       </div>;
@@ -14075,7 +14088,7 @@ function AccountChangeModal({accounts,setAccounts,onClose}){
 }
 
 // ── 설정 ─────────────────────────────────────────────────────────────────────
-function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accounts,setAccounts,teachers,setTeachers,allData,setAllData,tuitionDaySetting,setTuitionDaySetting}){
+function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accounts,setAccounts,teachers,setTeachers,allData,setAllData,tuitionDaySetting,setTuitionDaySetting,solapiConfig,setSolapiConfig}){
   const[tab,setTab]=useState('academy');
   // 학원 기본 정보
   const[nameInput,setNameInput]=useState(academyName||'');
@@ -14213,7 +14226,7 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
       <p className="text-slate-600 text-sm mt-1">학원 기본 정보와 계정을 관리하세요</p>
     </div>
     <div className="flex gap-2 border-b border-slate-200 pb-0 flex-wrap">
-      {[{id:'academy',label:'학원 기본 정보'},{id:'tuition_day',label:'수강료 납부기한'},{id:'teachers_acc',label:'강사 계정 관리'},{id:'director',label:'원장 계정'},{id:'data',label:'데이터 백업·공유'}].map(t=>(
+      {[{id:'academy',label:'학원 기본 정보'},{id:'tuition_day',label:'수강료 납부기한'},{id:'teachers_acc',label:'강사 계정 관리'},{id:'director',label:'원장 계정'},{id:'sms',label:'📱 SMS 알림 설정'},{id:'data',label:'데이터 백업·공유'}].map(t=>(
         <button key={t.id} onClick={()=>setTab(t.id)} className={`px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition-colors ${tab===t.id?'border-[#1e3a5f] text-[#1e3a5f] bg-white':'border-transparent text-slate-500 hover:text-slate-700'}`}>{t.label}</button>
       ))}
     </div>
@@ -14283,6 +14296,75 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
       {dErr&&<p className="text-red-500 text-xs font-semibold">{dErr}</p>}
       <button className={btn('indigo')} onClick={saveDirector}>변경 저장</button>
     </div>}
+    {tab==='sms'&&(()=>{
+      const cfg=solapiConfig||{apiKey:'',apiSecret:'',fromPhone:'',enabled:false};
+      const[draft,setDraft]=React.useState(cfg);
+      const[testPhone,setTestPhone]=React.useState('');
+      const[testResult,setTestResult]=React.useState('');
+      const[saving,setSaving]=React.useState(false);
+      const[testing,setTesting]=React.useState(false);
+      const[showGuide,setShowGuide]=React.useState(false);
+      const save=()=>{setSaving(true);setSolapiConfig(draft);setTimeout(()=>setSaving(false),1500);};
+      const testSend=async()=>{
+        if(!testPhone){setTestResult('테스트 발신 번호를 입력하세요.');return;}
+        if(!draft.apiKey||!draft.apiSecret||!draft.fromPhone){setTestResult('API Key, Secret, 발신번호를 모두 입력하세요.');return;}
+        setTesting(true);setTestResult('');
+        try{
+          const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({apiKey:draft.apiKey,apiSecret:draft.apiSecret,from:draft.fromPhone.replace(/[^0-9]/g,''),to:testPhone.replace(/[^0-9]/g,''),text:'[학원관리시스템] SMS 연동 테스트 메시지입니다.'})});
+          const data=await res.json();
+          setTestResult(data.success?'✅ 테스트 발송 성공!':'❌ 발송 실패: '+(data.error||'오류'));
+        }catch(e){setTestResult('❌ 오류: '+e.message);}
+        setTesting(false);
+      };
+      return<div className="space-y-5 max-w-lg">
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="font-bold text-blue-900">솔라피(SOLAPI) 문자 발송 연동</div>
+            <button onClick={()=>setShowGuide(v=>!v)} className="text-xs text-blue-600 underline">{showGuide?'가이드 닫기':'설정 가이드 보기 ▼'}</button>
+          </div>
+          <p className="text-sm text-blue-700">API 키를 입력하면 수강료 알림·공지·보강 알림을 자동으로 문자 발송합니다.</p>
+          {showGuide&&<div className="mt-4 space-y-3 text-sm text-blue-800 border-t border-blue-200 pt-4">
+            <div className="font-bold text-blue-900 mb-2">📋 설정 방법 (5분 소요)</div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">1</span><div><span className="font-semibold">솔라피 가입</span><br/><a href="https://solapi.com" target="_blank" rel="noreferrer" className="text-blue-600 underline">solapi.com</a> 접속 → 회원가입 → <strong>개인 계정</strong> 선택</div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">2</span><div><span className="font-semibold">API 키 발급</span><br/>로그인 후 우측 상단 프로필 → <strong>API 키 관리</strong> → 키 생성 → API Key와 API Secret 복사</div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">3</span><div><span className="font-semibold">발신번호 등록</span><br/>솔라피 콘솔 → <strong>발신번호 관리</strong> → 학원 대표 번호 등록 (ARS 인증 필요, 약 1분)</div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">4</span><div><span className="font-semibold">충전</span><br/>솔라피 콘솔 → <strong>포인트 충전</strong> → 원하는 금액 충전 (문자 1건 약 18원, 알림톡 13원)</div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">5</span><div><span className="font-semibold">아래 입력 후 저장</span><br/>발급받은 API Key, Secret, 발신번호를 입력하고 저장</div></div>
+          </div>}
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">API Key</label>
+            <input className={inp} value={draft.apiKey||''} onChange={e=>setDraft({...draft,apiKey:e.target.value})} placeholder="솔라피 API Key 입력"/>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">API Secret</label>
+            <input className={inp} type="password" value={draft.apiSecret||''} onChange={e=>setDraft({...draft,apiSecret:e.target.value})} placeholder="솔라피 API Secret 입력"/>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">발신번호 (학원 대표번호)</label>
+            <input className={inp} value={draft.fromPhone||''} onChange={e=>setDraft({...draft,fromPhone:e.target.value})} placeholder="예: 0212345678 또는 01012345678"/>
+            <p className="text-xs text-slate-400 mt-1">솔라피에 등록된 발신번호와 정확히 일치해야 합니다</p>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})} className="accent-indigo-600 w-4 h-4"/>
+              <span className="text-sm font-semibold text-slate-700">SMS 자동 발송 활성화</span>
+            </label>
+            {draft.enabled&&<span className="text-xs text-green-600 font-medium">🟢 활성화 상태</span>}
+          </div>
+          <button className={btn('indigo')} onClick={save}>{saving?'저장됨 ✓':'설정 저장'}</button>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-3">
+          <div className="font-semibold text-slate-800">테스트 발송</div>
+          <p className="text-xs text-slate-500">저장 전에 테스트 발송으로 연동이 정상인지 확인하세요.</p>
+          <input className={inp} value={testPhone} onChange={e=>setTestPhone(e.target.value)} placeholder="테스트 수신 번호 (예: 01012345678)"/>
+          <button className={btn('slate')} onClick={testSend} disabled={testing}>{testing?'발송 중...':'테스트 문자 보내기'}</button>
+          {testResult&&<div className={`text-sm font-medium ${testResult.startsWith('✅')?'text-green-600':'text-red-500'}`}>{testResult}</div>}
+        </div>
+      </div>;
+    })()}
     {tab==='data'&&<div className="space-y-6 max-w-2xl">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h3 className="font-bold text-slate-900 mb-2">데이터 내보내기 (백업)</h3>
@@ -14629,6 +14711,18 @@ export default function App(){
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
   const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
   const[academyType,setAcademyType]=useLS('hm_academy_type','piano');
+  const[solapiConfig,setSolapiConfig]=useLS('hm_solapi_config6',{apiKey:'',apiSecret:'',fromPhone:'',enabled:false});
+  // ── SMS 자동 발송 (솔라피) ────────────────────────────────────────────────────
+  const sendSMSAuto=async(toPhone,text)=>{
+    const cfg=solapiConfig;
+    if(!cfg?.apiKey||!cfg?.apiSecret||!cfg?.fromPhone)return{ok:false,reason:'설정 없음'};
+    try{
+      const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({apiKey:cfg.apiKey,apiSecret:cfg.apiSecret,from:cfg.fromPhone,to:toPhone.replace(/[^0-9]/g,''),text})});
+      const data=await res.json();
+      return{ok:!!data.success,reason:data.error||''};
+    }catch(e){return{ok:false,reason:e.message};}
+  };
   // ── Supabase Auth 상태 ──────────────────────────────────────────────────────
   const[supabaseSession,setSupabaseSession]=useState(null);
   const[authChecked,setAuthChecked]=useState(isBlank); // blank 모드는 auth 불필요
@@ -14876,6 +14970,7 @@ export default function App(){
           accounts={accounts} setAccounts={setAccounts}
           teachers={teachers} setTeachers={setTeachers}
           tuitionDaySetting={tuitionDaySetting} setTuitionDaySetting={setTuitionDaySetting}
+          solapiConfig={solapiConfig} setSolapiConfig={setSolapiConfig}
           allData={{teachers,classes,students,income,expenses,attendance,notices,videos,tuitions,consultations,events,makeups,withdrawals,achievements,accounts,academyName,baseUrl}}
           setAllData={d=>{
             if(d.teachers!==undefined)setTeachers(d.teachers);
