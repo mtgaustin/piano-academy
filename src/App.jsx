@@ -9070,7 +9070,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
         <div className="text-sm font-semibold text-slate-800 mb-3">💼 경력 사항</div>
         {(form.career||[]).length>0&&<div className="space-y-2 mb-3">
           {(form.career||[]).map((c,i)=>(
-            <div key={i} className="flex items-center justify-between bg-[#f1f5f9] rounded-lg px-3 py-2">
+            <div key={c.org+'-'+c.startDate+'-'+i} className="flex items-center justify-between bg-[#f1f5f9] rounded-lg px-3 py-2">
               <div className="text-sm">
                 <span className="font-medium text-slate-900">{c.org}</span>
                 {c.role&&<span className="text-slate-600"> · {c.role}</span>}
@@ -9094,7 +9094,7 @@ function TeacherManagement({teachers,setTeachers,classes,setClasses,attendance,s
         <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} className="text-sm mb-3"/>
         {(form.attachments||[]).length>0?<div className="space-y-2">
           {(form.attachments||[]).map((f,i)=>(
-            <div key={i} className="flex items-center justify-between bg-[#f1f5f9] rounded-lg px-3 py-2">
+            <div key={f.name+'-'+i} className="flex items-center justify-between bg-[#f1f5f9] rounded-lg px-3 py-2">
               <div className="text-sm truncate" style={{maxWidth:'60%'}}>📄 {f.name}<div className="text-xs text-slate-500">{fDate(f.uploadDate)} · {Math.ceil(f.size/1024)}KB</div></div>
               <div className="flex gap-2">
                 <a href={f.dataUrl} target="_blank" rel="noopener noreferrer" className="text-xs px-2 py-1 rounded bg-[#dbeafe] text-[#1e3a5f]">보기</a>
@@ -9727,7 +9727,7 @@ function StudentManagement({students,setStudents,classes,withdrawals,setWithdraw
       {editTarget&&<Field label="재원 이력">
         <div className="space-y-1 text-xs text-slate-600 border border-gray-200 rounded-lg p-3">
           {(form.enrollmentHistory||[]).length===0&&<div className="text-slate-400">이력 없음</div>}
-          {(form.enrollmentHistory||[]).map((h,i)=><div key={i}>{fDate(h.joinDate)} ~ {h.leaveDate?fDate(h.leaveDate):'재원중'}</div>)}
+          {(form.enrollmentHistory||[]).map((h,i)=><div key={h.joinDate||i}>{fDate(h.joinDate)} ~ {h.leaveDate?fDate(h.leaveDate):'재원중'}</div>)}
         </div>
       </Field>}
       {editTarget&&<Field label="진도 코멘트">
@@ -11169,7 +11169,7 @@ function NoticeManagement({notices,setNotices,students,classes,academyName,baseU
           <div className="font-semibold text-slate-900 truncate">{n.title}</div>
           <div className="text-sm text-slate-600 truncate mt-0.5">{n.content}</div>
           {n.posterImg&&<div className="mt-2"><img src={n.posterImg} alt="포스터" className="h-16 rounded-lg object-cover border border-gray-200 cursor-pointer" onClick={e=>{e.stopPropagation();setNoticeImgModal(n.posterImg);}}/></div>}
-          {(n.attachments||[]).length>0&&<div className="mt-1 flex gap-1 flex-wrap">{n.attachments.map((a,i)=><a key={i} href={a.dataUrl} download={a.name} className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">📎 {a.name}</a>)}</div>}
+          {(n.attachments||[]).length>0&&<div className="mt-1 flex gap-1 flex-wrap">{n.attachments.map((a,i)=><a key={a.name+'-'+i} href={a.dataUrl} download={a.name} className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">📎 {a.name}</a>)}</div>}
         </div>
         <div className="shrink-0 text-right flex flex-col items-end gap-1">
           <div className="text-xs text-slate-600">{fDate(n.date)}</div>
@@ -11199,7 +11199,7 @@ function NoticeManagement({notices,setNotices,students,classes,academyName,baseU
           <div className="flex gap-4 text-sm text-slate-600 mb-4"><span>📅 {fDate(detailNotice.date)}</span><span>👥 대상: {detailNotice.target}</span></div>
           <div className="bg-[#f1f5f9] rounded-xl p-4 text-slate-800 whitespace-pre-wrap leading-relaxed">{detailNotice.content}</div>
           {detailNotice.posterImg&&<div className="mt-4"><div className="text-xs font-semibold text-slate-600 mb-2">포스터 이미지</div><img src={detailNotice.posterImg} alt="포스터" className="max-w-full rounded-xl border border-gray-200 cursor-pointer hover:opacity-90" onClick={()=>setNoticeImgModal(detailNotice.posterImg)}/></div>}
-          {(detailNotice.attachments||[]).length>0&&<div className="mt-3"><div className="text-xs font-semibold text-slate-600 mb-1">첨부파일</div><div className="flex flex-wrap gap-2">{detailNotice.attachments.map((a,i)=><a key={i} href={a.dataUrl} download={a.name} className="text-sm px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium">📎 {a.name}</a>)}</div></div>}
+          {(detailNotice.attachments||[]).length>0&&<div className="mt-3"><div className="text-xs font-semibold text-slate-600 mb-1">첨부파일</div><div className="flex flex-wrap gap-2">{detailNotice.attachments.map((a,i)=><a key={a.name+'-'+i} href={a.dataUrl} download={a.name} className="text-sm px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium">📎 {a.name}</a>)}</div></div>}
           {(detailNotice.sentContacts||[]).length>0&&<div className="mt-3 text-sm text-green-600">✅ {detailNotice.sentContacts.length}명 학부모 발송 완료 ({fDate(detailNotice.sentDate)})</div>}
           <div className="flex justify-between mt-5">
             <div className="flex gap-2">
@@ -11300,7 +11300,7 @@ function NoticeManagement({notices,setNotices,students,classes,academyName,baseU
             📎 파일 추가
             <input type="file" multiple className="hidden" onChange={handleAttachUpload}/>
           </label>
-          {(form.attachments||[]).length>0&&<div className="flex flex-wrap gap-2 mt-2">{form.attachments.map((a,i)=><div key={i} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700"><span>📎 {a.name}</span><button className="text-red-400 hover:text-red-600 ml-1 font-bold" onClick={()=>setForm(f=>({...f,attachments:f.attachments.filter((_,j)=>j!==i)}))} title="제거">×</button></div>)}</div>}
+          {(form.attachments||[]).length>0&&<div className="flex flex-wrap gap-2 mt-2">{form.attachments.map((a,i)=><div key={a.name+'-'+i} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700"><span>📎 {a.name}</span><button className="text-red-400 hover:text-red-600 ml-1 font-bold" onClick={()=>setForm(f=>({...f,attachments:f.attachments.filter((_,j)=>j!==i)}))} title="제거">×</button></div>)}</div>}
         </div>
       </Field>
       <div className="flex justify-end gap-3 mt-2"><button className={btn('indigo')} onClick={save}>저장</button><button className={btn('gray')} onClick={()=>setModalOpen(false)}>취소</button></div>
@@ -14662,14 +14662,13 @@ export default function App(){
   },[]);
   // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
   useEffect(()=>{
-    if(isBlank){console.log('[Blank 모드] Supabase 동기화 스킵 — 빈 상태로 시작');return;}
+    if(isBlank){return;}
     (async()=>{
       try{
         const td=await dbLoad('teachers');
         if(td===null){console.warn('[Supabase] 연결 실패 — 로컬 데이터로 계속합니다');return;}
         if(td.length===0){
           // DB가 비어 있음 → 현재 로컬 데이터를 DB에 씀 (최초 1회)
-          console.log('[Supabase] DB 초기 저장 중...');
           await Promise.all([
             dbSync('teachers',teachers),dbSync('classes',classes),dbSync('students',students),
             dbSync('income',income),dbSync('expenses',expenses),dbSync('attendance',attendance),
@@ -14677,10 +14676,8 @@ export default function App(){
             dbSync('consultations',consultations),dbSync('events',events),dbSync('makeups',makeups),
             dbSync('withdrawals',withdrawals),dbSync('achievements',achievements),
           ]);
-          console.log('[Supabase] ✅ 초기 저장 완료');
         }else{
           // DB에 데이터 있음 → 불러와서 앱 상태 교체
-          console.log('[Supabase] DB에서 데이터 로드 중...');
           const[cl,st,inc,exp,att,not,vid,tui,con,evt,mk,wd,ach]=await Promise.all([
             dbLoad('classes'),dbLoad('students'),dbLoad('income'),dbLoad('expenses'),
             dbLoad('attendance'),dbLoad('notices'),dbLoad('videos'),dbLoad('tuitions'),
@@ -14701,7 +14698,6 @@ export default function App(){
           if(mk&&mk.length)setMakeups(mk);
           if(wd&&wd.length)setWithdrawals(wd);
           if(ach&&ach.length)setAchievements(ach);
-          console.log('[Supabase] ✅ 로드 완료 - 강사:',td.length,'학생:',st?.length);
         }
       }catch(e){console.error('[Supabase] 초기화 오류:',e.message);}
     })();
