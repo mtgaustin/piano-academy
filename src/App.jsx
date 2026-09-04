@@ -14109,6 +14109,13 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
   const[tNewPw,setTNewPw]=useState('');
   const[tNewPw2,setTNewPw2]=useState('');
   const[tErr,setTErr]=useState('');
+  // SMS 설정 탭 state
+  const[smsDraft,setSmsDraft]=useState(solapiConfig||{apiKey:'',apiSecret:'',fromPhone:'',enabled:false});
+  const[smsTestPhone,setSmsTestPhone]=useState('');
+  const[smsTestResult,setSmsTestResult]=useState('');
+  const[smsSaving,setSmsSaving]=useState(false);
+  const[smsTesting,setSmsTesting]=useState(false);
+  const[smsShowGuide,setSmsShowGuide]=useState(false);
 
   const saveAcademy=()=>{
     if(!nameInput.trim()){alert('학원 이름을 입력해주세요.');return;}
@@ -14297,34 +14304,27 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
       <button className={btn('indigo')} onClick={saveDirector}>변경 저장</button>
     </div>}
     {tab==='sms'&&(()=>{
-      const cfg=solapiConfig||{apiKey:'',apiSecret:'',fromPhone:'',enabled:false};
-      const[draft,setDraft]=React.useState(cfg);
-      const[testPhone,setTestPhone]=React.useState('');
-      const[testResult,setTestResult]=React.useState('');
-      const[saving,setSaving]=React.useState(false);
-      const[testing,setTesting]=React.useState(false);
-      const[showGuide,setShowGuide]=React.useState(false);
-      const save=()=>{setSaving(true);setSolapiConfig(draft);setTimeout(()=>setSaving(false),1500);};
+      const save=()=>{setSmsSaving(true);setSolapiConfig(smsDraft);setTimeout(()=>setSmsSaving(false),1500);};
       const testSend=async()=>{
-        if(!testPhone){setTestResult('테스트 발신 번호를 입력하세요.');return;}
-        if(!draft.apiKey||!draft.apiSecret||!draft.fromPhone){setTestResult('API Key, Secret, 발신번호를 모두 입력하세요.');return;}
-        setTesting(true);setTestResult('');
+        if(!smsTestPhone){setSmsTestResult('테스트 수신 번호를 입력하세요.');return;}
+        if(!smsDraft.apiKey||!smsDraft.apiSecret||!smsDraft.fromPhone){setSmsTestResult('API Key, Secret, 발신번호를 모두 입력하세요.');return;}
+        setSmsTesting(true);setSmsTestResult('');
         try{
           const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({apiKey:draft.apiKey,apiSecret:draft.apiSecret,from:draft.fromPhone.replace(/[^0-9]/g,''),to:testPhone.replace(/[^0-9]/g,''),text:'[학원관리시스템] SMS 연동 테스트 메시지입니다.'})});
+            body:JSON.stringify({apiKey:smsDraft.apiKey,apiSecret:smsDraft.apiSecret,from:smsDraft.fromPhone.replace(/[^0-9]/g,''),to:smsTestPhone.replace(/[^0-9]/g,''),text:'[학원관리시스템] SMS 연동 테스트 메시지입니다.'})});
           const data=await res.json();
-          setTestResult(data.success?'✅ 테스트 발송 성공!':'❌ 발송 실패: '+(data.error||'오류'));
-        }catch(e){setTestResult('❌ 오류: '+e.message);}
-        setTesting(false);
+          setSmsTestResult(data.success?'✅ 테스트 발송 성공!':'❌ 발송 실패: '+(data.error||'오류'));
+        }catch(e){setSmsTestResult('❌ 오류: '+e.message);}
+        setSmsTesting(false);
       };
       return<div className="space-y-5 max-w-lg">
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-1">
             <div className="font-bold text-blue-900">솔라피(SOLAPI) 문자 발송 연동</div>
-            <button onClick={()=>setShowGuide(v=>!v)} className="text-xs text-blue-600 underline">{showGuide?'가이드 닫기':'설정 가이드 보기 ▼'}</button>
+            <button onClick={()=>setSmsShowGuide(v=>!v)} className="text-xs text-blue-600 underline">{smsShowGuide?'가이드 닫기':'설정 가이드 보기 ▼'}</button>
           </div>
           <p className="text-sm text-blue-700">API 키를 입력하면 수강료 알림·공지·보강 알림을 자동으로 문자 발송합니다.</p>
-          {showGuide&&<div className="mt-4 space-y-3 text-sm text-blue-800 border-t border-blue-200 pt-4">
+          {smsShowGuide&&<div className="mt-4 space-y-3 text-sm text-blue-800 border-t border-blue-200 pt-4">
             <div className="font-bold text-blue-900 mb-2">📋 설정 방법 (5분 소요)</div>
             <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">1</span><div><span className="font-semibold">솔라피 가입</span><br/><a href="https://solapi.com" target="_blank" rel="noreferrer" className="text-blue-600 underline">solapi.com</a> 접속 → 회원가입 → <strong>개인 계정</strong> 선택</div></div>
             <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold shrink-0">2</span><div><span className="font-semibold">API 키 발급</span><br/>로그인 후 우측 상단 프로필 → <strong>API 키 관리</strong> → 키 생성 → API Key와 API Secret 복사</div></div>
@@ -14336,32 +14336,32 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">API Key</label>
-            <input className={inp} value={draft.apiKey||''} onChange={e=>setDraft({...draft,apiKey:e.target.value})} placeholder="솔라피 API Key 입력"/>
+            <input className={inp} value={smsDraft.apiKey||''} onChange={e=>setSmsDraft({...smsDraft,apiKey:e.target.value})} placeholder="솔라피 API Key 입력"/>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">API Secret</label>
-            <input className={inp} type="password" value={draft.apiSecret||''} onChange={e=>setDraft({...draft,apiSecret:e.target.value})} placeholder="솔라피 API Secret 입력"/>
+            <input className={inp} type="password" value={smsDraft.apiSecret||''} onChange={e=>setSmsDraft({...smsDraft,apiSecret:e.target.value})} placeholder="솔라피 API Secret 입력"/>
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">발신번호 (학원 대표번호)</label>
-            <input className={inp} value={draft.fromPhone||''} onChange={e=>setDraft({...draft,fromPhone:e.target.value})} placeholder="예: 0212345678 또는 01012345678"/>
+            <input className={inp} value={smsDraft.fromPhone||''} onChange={e=>setSmsDraft({...smsDraft,fromPhone:e.target.value})} placeholder="예: 0212345678 또는 01012345678"/>
             <p className="text-xs text-slate-400 mt-1">솔라피에 등록된 발신번호와 정확히 일치해야 합니다</p>
           </div>
           <div className="flex items-center gap-3 pt-1">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={!!draft.enabled} onChange={e=>setDraft({...draft,enabled:e.target.checked})} className="accent-indigo-600 w-4 h-4"/>
+              <input type="checkbox" checked={!!smsDraft.enabled} onChange={e=>setSmsDraft({...smsDraft,enabled:e.target.checked})} className="accent-indigo-600 w-4 h-4"/>
               <span className="text-sm font-semibold text-slate-700">SMS 자동 발송 활성화</span>
             </label>
-            {draft.enabled&&<span className="text-xs text-green-600 font-medium">🟢 활성화 상태</span>}
+            {smsDraft.enabled&&<span className="text-xs text-green-600 font-medium">🟢 활성화 상태</span>}
           </div>
-          <button className={btn('indigo')} onClick={save}>{saving?'저장됨 ✓':'설정 저장'}</button>
+          <button className={btn('indigo')} onClick={save}>{smsSaving?'저장됨 ✓':'설정 저장'}</button>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-3">
           <div className="font-semibold text-slate-800">테스트 발송</div>
           <p className="text-xs text-slate-500">저장 전에 테스트 발송으로 연동이 정상인지 확인하세요.</p>
-          <input className={inp} value={testPhone} onChange={e=>setTestPhone(e.target.value)} placeholder="테스트 수신 번호 (예: 01012345678)"/>
-          <button className={btn('slate')} onClick={testSend} disabled={testing}>{testing?'발송 중...':'테스트 문자 보내기'}</button>
-          {testResult&&<div className={`text-sm font-medium ${testResult.startsWith('✅')?'text-green-600':'text-red-500'}`}>{testResult}</div>}
+          <input className={inp} value={smsTestPhone} onChange={e=>setSmsTestPhone(e.target.value)} placeholder="테스트 수신 번호 (예: 01012345678)"/>
+          <button className={btn('slate')} onClick={testSend} disabled={smsTesting}>{smsTesting?'발송 중...':'테스트 문자 보내기'}</button>
+          {smsTestResult&&<div className={`text-sm font-medium ${smsTestResult.startsWith('✅')?'text-green-600':'text-red-500'}`}>{smsTestResult}</div>}
         </div>
       </div>;
     })()}
