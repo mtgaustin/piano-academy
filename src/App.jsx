@@ -10505,10 +10505,10 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
               <button className="w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-all" onClick={async()=>{
                 const phone=student.grade==='성인'?student.phone:student.parentPhone;
                 if(!phone){alert('수신자 전화번호가 없습니다.');return;}
-                const r=await sendSMSAuto(phone,smsText);
-                if(r.ok){recordNotification(sendModal,'sms');setSendModal(null);alert('✅ SMS 발송 완료!');}
-                else alert('❌ SMS 발송 실패: '+(r.reason||'오류'));
-              }}>📱 SMS 자동 발송</button>
+                const r=await sendSMSAuto(phone,smsText,'tuition');
+                if(r.ok){recordNotification(sendModal,'sms');setSendModal(null);alert(r.via==='alimtalk'?'✅ 카카오 알림톡 발송 완료!':'✅ SMS 발송 완료!');}
+                else alert('❌ 발송 실패: '+(r.reason||'오류'));
+              }}>{(solapiConfig?.kakaoEnabled&&solapiConfig?.kakaoChannelId&&solapiConfig?.kakaoTplTuition)?'💬 알림톡 자동 발송':'📱 SMS 자동 발송'}</button>
             ):(
               <div className="text-center text-xs text-slate-400 py-1">SMS 자동 발송하려면 설정 → SMS 알림 설정에서 API 키를 등록하세요</div>
             )}
@@ -14110,12 +14110,13 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
   const[tNewPw2,setTNewPw2]=useState('');
   const[tErr,setTErr]=useState('');
   // SMS 설정 탭 state
-  const[smsDraft,setSmsDraft]=useState(solapiConfig||{apiKey:'',apiSecret:'',fromPhone:'',enabled:false});
+  const[smsDraft,setSmsDraft]=useState({apiKey:'',apiSecret:'',fromPhone:'',enabled:false,kakaoChannelId:'',kakaoEnabled:false,kakaoTplTuition:'',kakaoTplNotice:'',...(solapiConfig||{})});
   const[smsTestPhone,setSmsTestPhone]=useState('');
   const[smsTestResult,setSmsTestResult]=useState('');
   const[smsSaving,setSmsSaving]=useState(false);
   const[smsTesting,setSmsTesting]=useState(false);
   const[smsShowGuide,setSmsShowGuide]=useState(false);
+  const[kakaoShowGuide,setKakaoShowGuide]=useState(false);
 
   const saveAcademy=()=>{
     if(!nameInput.trim()){alert('학원 이름을 입력해주세요.');return;}
@@ -14356,6 +14357,48 @@ function SettingsManagement({academyName,setAcademyName,baseUrl,setBaseUrl,accou
           </div>
           <button className={btn('indigo')} onClick={save}>{smsSaving?'저장됨 ✓':'설정 저장'}</button>
         </div>
+        {/* ── 카카오 알림톡 섹션 ── */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-1">
+            <div className="font-bold text-yellow-900">💬 카카오 알림톡 연동 <span className="text-xs font-normal text-yellow-700">(선택 — SMS보다 30% 저렴)</span></div>
+            <button onClick={()=>setKakaoShowGuide(v=>!v)} className="text-xs text-yellow-700 underline">{kakaoShowGuide?'가이드 닫기':'설정 방법 보기 ▼'}</button>
+          </div>
+          <p className="text-sm text-yellow-800">채널 ID와 템플릿 ID를 입력하면 SMS 대신 알림톡으로 발송됩니다. 알림톡이 실패하면 자동으로 SMS로 전환됩니다.</p>
+          {kakaoShowGuide&&<div className="mt-4 space-y-3 text-sm text-yellow-900 border-t border-yellow-300 pt-4">
+            <div className="font-bold mb-2">📋 카카오 알림톡 설정 방법</div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-yellow-500 text-white text-xs flex items-center justify-center font-bold shrink-0">1</span><div><span className="font-semibold">카카오 비즈니스 채널 개설</span><br/><a href="https://business.kakao.com" target="_blank" rel="noreferrer" className="text-yellow-700 underline">business.kakao.com</a> → 카카오톡 채널 → 채널 개설 → 비즈니스 인증 신청 (학원 사업자등록증 필요, 1~3일 소요)</div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-yellow-500 text-white text-xs flex items-center justify-center font-bold shrink-0">2</span><div><span className="font-semibold">솔라피에서 카카오 채널 연결</span><br/>솔라피 콘솔 → <strong>카카오 알림톡</strong> → 채널 연결 → 발신 프로필 ID(채널 ID) 확인 후 아래에 입력</div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-yellow-500 text-white text-xs flex items-center justify-center font-bold shrink-0">3</span><div><span className="font-semibold">알림톡 템플릿 등록 및 승인</span><br/>솔라피 → 알림톡 → 템플릿 관리 → 새 템플릿 등록 → 카카오 검수 신청 (1~2주 소요)<br/><span className="text-yellow-700 font-medium">수강료 청구 예시: "[#{'{'}학원명{'}'}] #{'{'}학생명{'}'} 학부모님, #{'{'}월{'}'}월 수강료 #{'{'}금액{'}'}원 납부를 부탁드립니다."</span></div></div>
+            <div className="flex gap-3"><span className="w-6 h-6 rounded-full bg-yellow-500 text-white text-xs flex items-center justify-center font-bold shrink-0">4</span><div><span className="font-semibold">승인된 템플릿 ID 입력</span><br/>솔라피 → 템플릿 관리 → 승인 완료된 템플릿의 ID를 아래에 입력</div></div>
+            <div className="bg-yellow-100 rounded-xl p-3 text-xs text-yellow-800 mt-2">
+              <strong>현재 채널 미등록 시:</strong> 아래 채널 ID를 비워두면 SMS로 발송됩니다. 채널 개설 완료 후 언제든 입력하면 즉시 알림톡으로 전환됩니다.
+            </div>
+          </div>}
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">카카오 채널 ID (발신 프로필 ID)</label>
+            <input className={inp} value={smsDraft.kakaoChannelId||''} onChange={e=>setSmsDraft({...smsDraft,kakaoChannelId:e.target.value})} placeholder="예: @하모니피아노학원 또는 솔라피 채널 연결 후 확인"/>
+            <p className="text-xs text-slate-400 mt-1">솔라피 콘솔 → 카카오 알림톡 → 채널 연결에서 확인</p>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">수강료 청구 템플릿 ID</label>
+            <input className={inp} value={smsDraft.kakaoTplTuition||''} onChange={e=>setSmsDraft({...smsDraft,kakaoTplTuition:e.target.value})} placeholder="솔라피에서 승인된 수강료 알림 템플릿 ID"/>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">일반 공지 템플릿 ID</label>
+            <input className={inp} value={smsDraft.kakaoTplNotice||''} onChange={e=>setSmsDraft({...smsDraft,kakaoTplNotice:e.target.value})} placeholder="솔라피에서 승인된 공지/알림 템플릿 ID"/>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!smsDraft.kakaoEnabled} onChange={e=>setSmsDraft({...smsDraft,kakaoEnabled:e.target.checked})} className="accent-yellow-500 w-4 h-4"/>
+              <span className="text-sm font-semibold text-slate-700">알림톡 자동 발송 활성화 (SMS 대신 알림톡 우선 사용)</span>
+            </label>
+          </div>
+          {smsDraft.kakaoEnabled&&!smsDraft.kakaoChannelId&&<p className="text-xs text-orange-500 font-medium">⚠️ 채널 ID를 입력해야 알림톡이 실제로 발송됩니다.</p>}
+          {smsDraft.kakaoEnabled&&smsDraft.kakaoChannelId&&<span className="text-xs text-green-600 font-medium">🟢 알림톡 활성화 — 템플릿 미설정 시 SMS로 자동 전환</span>}
+        </div>
+        {/* ── 테스트 발송 ── */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-3">
           <div className="font-semibold text-slate-800">테스트 발송</div>
           <p className="text-xs text-slate-500">저장 전에 테스트 발송으로 연동이 정상인지 확인하세요.</p>
@@ -14711,16 +14754,34 @@ export default function App(){
   const[courseTypes,setCourseTypes]=useLS('hm_subjects6',DEFAULT_SUBJECTS);
   const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
   const[academyType,setAcademyType]=useLS('hm_academy_type','piano');
-  const[solapiConfig,setSolapiConfig]=useLS('hm_solapi_config6',{apiKey:'',apiSecret:'',fromPhone:'',enabled:false});
-  // ── SMS 자동 발송 (솔라피) ────────────────────────────────────────────────────
-  const sendSMSAuto=async(toPhone,text)=>{
+  const[solapiConfig,setSolapiConfig]=useLS('hm_solapi_config6',{apiKey:'',apiSecret:'',fromPhone:'',enabled:false,kakaoChannelId:'',kakaoEnabled:false,kakaoTplTuition:'',kakaoTplNotice:''});
+  // ── SMS/알림톡 자동 발송 (솔라피) ──────────────────────────────────────────────
+  // msgType: 'tuition'(수강료) | 'notice'(일반공지/기타) — 알림톡 템플릿 선택에 사용
+  const sendSMSAuto=async(toPhone,text,msgType='notice')=>{
     const cfg=solapiConfig;
     if(!cfg?.apiKey||!cfg?.apiSecret||!cfg?.fromPhone)return{ok:false,reason:'설정 없음'};
+    const cleanTo=toPhone.replace(/[^0-9]/g,'');
+    const cleanFrom=cfg.fromPhone.replace(/[^0-9]/g,'');
+    // 카카오 알림톡 우선 시도 (채널ID + 템플릿ID가 모두 설정된 경우)
+    if(cfg.kakaoEnabled&&cfg.kakaoChannelId){
+      const tplId=msgType==='tuition'?cfg.kakaoTplTuition:cfg.kakaoTplNotice;
+      if(tplId){
+        try{
+          const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({apiKey:cfg.apiKey,apiSecret:cfg.apiSecret,from:cleanFrom,to:cleanTo,text,type:'ATA',
+              kakaoOptions:{pfId:cfg.kakaoChannelId,templateId:tplId,variables:{'#{내용}':text}}})});
+          const data=await res.json();
+          if(data.success)return{ok:true,via:'alimtalk',reason:''};
+          // 알림톡 실패 시 SMS로 폴백
+        }catch(e){/* SMS 폴백 */}
+      }
+    }
+    // SMS 발송 (기본 / 폴백)
     try{
       const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({apiKey:cfg.apiKey,apiSecret:cfg.apiSecret,from:cfg.fromPhone,to:toPhone.replace(/[^0-9]/g,''),text})});
+        body:JSON.stringify({apiKey:cfg.apiKey,apiSecret:cfg.apiSecret,from:cleanFrom,to:cleanTo,text})});
       const data=await res.json();
-      return{ok:!!data.success,reason:data.error||''};
+      return{ok:!!data.success,reason:data.error||'',via:'sms'};
     }catch(e){return{ok:false,reason:e.message};}
   };
   // ── Supabase Auth 상태 ──────────────────────────────────────────────────────
