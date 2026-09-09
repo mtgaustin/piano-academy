@@ -10222,6 +10222,17 @@ function TuitionManagement({tuitions,setTuitions,students,classes,income,setInco
         if(!wasAlreadyPaid&&isNowPaid){
           // 미납→납부완료: 수입 레코드 자동 생성
           setIncome(prev=>[...prev,{id:genId(),date:form.paidDate||today(),category:'수강료',description:`${data.studentName} ${form.month} 수강료`,amount:Number(form.amount),tuitionId:editTarget.id}]);
+          // 납부완료 시 학부모 SMS 자동 발송
+          if(sendSMSAuto&&solapiConfig?.enabled&&solapiConfig?.apiKey){
+            const st=getStudentInfo(form.studentId);
+            const phone=st?.grade==='성인'?st?.phone:st?.parentPhone;
+            if(phone){
+              const acName=academyName||'학원';
+              const[y,m]=form.month.split('-');
+              const smsText=`[${acName}]\n${data.studentName}님 ${y}년 ${m}월 수강료 ${fWon(Number(form.amount))} 납부가 확인되었습니다.\n결제방법: ${form.payMethod||'-'}\n감사합니다 🙏`;
+              sendSMSAuto(phone,smsText,'tuition');
+            }
+          }
         }else if(wasAlreadyPaid&&!isNowPaid){
           // 납부완료→미납 취소: 연결된 수입 레코드 삭제
           setIncome(prev=>prev.filter(i=>i.tuitionId!==editTarget.id));
@@ -10634,7 +10645,7 @@ function AttRow({person,type,classId,cur,statusBtns,setStatus,setAttendance,isWa
     </td>
   </tr>;
 }
-function AttendanceManagement({attendance,setAttendance,teachers,students,classes,attContext,clearAttContext,makeups,setMakeups,role,loggedInTeacherId}){
+function AttendanceManagement({attendance,setAttendance,teachers,students,classes,attContext,clearAttContext,makeups,setMakeups,role,loggedInTeacherId,academyName,solapiConfig,sendSMSAuto}){
   const[tab,setTab]=useState('teacher');
   const[date,setDate]=useState(today());
   const[nameSearch,setNameSearch]=useState('');
@@ -10749,6 +10760,20 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
     ):{};
     if(existing)setAttendance(prev=>prev.map(a=>a.id===existing.id?{...a,status,note,...timeFields}:a));
     else setAttendance(prev=>[...prev,{id:genId(),date,type,refId,status,note,...(type==='student'?{classId}:{}),...timeFields}]);
+    // 결석 처리 시 학부모 SMS 자동 발송
+    if(type==='student'&&status==='absent'&&sendSMSAuto&&solapiConfig?.enabled&&solapiConfig?.apiKey){
+      const st=students.find(s=>s.id===refId);
+      const cls=classes.find(c=>c.id===classId);
+      if(st){
+        const phone=st.grade==='성인'?st.phone:st.parentPhone;
+        if(phone){
+          const acName=academyName||'학원';
+          const receiver=st.grade==='성인'?`${st.name}님`:`${st.parentName||'학부모'}님`;
+          const smsText=`[${acName}]\n안녕하세요 ${receiver},\n${st.name} 학생이 오늘(${date}) ${cls?cls.name+' 수업':''} 결석 처리되었습니다.\n문의사항은 학원으로 연락 주세요.`;
+          sendSMSAuto(phone,smsText,'notice');
+        }
+      }
+    }
     // [20] 결석/휴강 → 다른 상태로 변경 시 연결된 보강 자동 삭제
     if(type==='student'&&status!=='absent'&&status!=='cancelled'&&setMakeups){
       const prevStatus=existing?.status;
@@ -11084,12 +11109,13 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
 }
 
 // ── 공지사항 관리 (학부모 발송 기능) ────────────────────────────────────────
-function NoticeManagement({notices,setNotices,students,classes,academyName,baseUrl}){
+function NoticeManagement({notices,setNotices,students,classes,academyName,baseUrl,solapiConfig,sendSMSAuto}){
   const[modalOpen,setModalOpen]=useState(false);
   const[detailNotice,setDetailNotice]=useState(null);
   const[sendNotice,setSendNotice]=useState(null);
   const[editTarget,setEditTarget]=useState(null);
   const[confirmId,setConfirmId]=useState(null);
+  const[noticeSending,setNoticeSending]=useState(false);
   const[filterCat,setFilterCat]=useState('전체');
   const[selectedContacts,setSelectedContacts]=useState([]);
   const[form,setForm]=useState({date:'',category:'공지',title:'',content:'',target:'전체',important:false,posterImg:'',attachments:[]});
@@ -11144,11 +11170,25 @@ function NoticeManagement({notices,setNotices,students,classes,academyName,baseU
     const parents=getTargetParents(n.target);
     setSelectedContacts(parents.map(p=>p.phone).filter(p=>!(n.sentContacts||[]).includes(p)));
   };
-  const confirmSend=()=>{
-    setNotices(prev=>prev.map(n=>n.id===sendNotice.id?{...n,sentContacts:[...new Set([...(n.sentContacts||[]),...selectedContacts])],sentDate:today()}:n));
-    setSendNotice(null);
-    setSelectedContacts([]);
-    alert(`✅ ${selectedContacts.length}명의 학부모에게 발송 처리되었습니다.`);
+  const confirmSend=async()=>{
+    if(solapiConfig?.enabled&&solapiConfig?.apiKey&&sendSMSAuto){
+      setNoticeSending(true);
+      const acName=academyName||'학원';
+      const smsText=`[${acName}]\n[${sendNotice.category}] ${sendNotice.title}\n${sendNotice.content}`;
+      let ok=0,fail=0;
+      for(const phone of selectedContacts){
+        const r=await sendSMSAuto(phone,smsText,'notice');
+        if(r.ok)ok++;else fail++;
+      }
+      setNoticeSending(false);
+      setNotices(prev=>prev.map(n=>n.id===sendNotice.id?{...n,sentContacts:[...new Set([...(n.sentContacts||[]),...selectedContacts])],sentDate:today()}:n));
+      setSendNotice(null);setSelectedContacts([]);
+      alert(fail>0?`✅ ${ok}명 발송 완료, ❌ ${fail}명 실패`:`✅ ${ok}명에게 발송 완료!`);
+    }else{
+      setNotices(prev=>prev.map(n=>n.id===sendNotice.id?{...n,sentContacts:[...new Set([...(n.sentContacts||[]),...selectedContacts])],sentDate:today()}:n));
+      setSendNotice(null);setSelectedContacts([]);
+      alert(`✅ ${selectedContacts.length}명의 학부모에게 발송 처리되었습니다.`);
+    }
   };
   const openAdd=()=>{setEditTarget(null);setForm({date:today(),category:'공지',title:'',content:'',target:'전체',important:false,posterImg:'',attachments:[]});setModalOpen(true);};
   const openEdit=n=>{setEditTarget(n);setForm({...n,posterImg:n.posterImg||'',attachments:n.attachments||[]});setModalOpen(true);};
@@ -11266,12 +11306,12 @@ function NoticeManagement({notices,setNotices,students,classes,academyName,baseU
               </div>;
             })}
           </div>
-          <div className="mt-3 text-xs text-slate-600">※ 실제 문자 발송은 별도 SMS 서비스 연동이 필요합니다. 이 버튼은 발송 현황을 기록합니다.</div>
+          {!(solapiConfig?.enabled&&solapiConfig?.apiKey)&&<div className="mt-3 text-xs text-slate-500">※ SMS 자동 발송하려면 설정 → SMS 알림 설정에서 API 키를 등록하세요. 지금은 발송 현황만 기록됩니다.</div>}
           <div className="flex justify-end gap-3 mt-4">
-            <button className={btn('blue')} onClick={confirmSend} disabled={selectedContacts.length===0}>
-              📱 {selectedContacts.length}명에게 발송 완료 처리
+            <button className={btn('blue')} onClick={confirmSend} disabled={selectedContacts.length===0||noticeSending}>
+              {noticeSending?'발송 중...':(solapiConfig?.enabled&&solapiConfig?.apiKey)?((solapiConfig?.kakaoEnabled&&solapiConfig?.kakaoChannelId&&solapiConfig?.kakaoTplNotice)?`💬 ${selectedContacts.length}명 알림톡 발송`:`📱 ${selectedContacts.length}명 SMS 발송`):`📱 ${selectedContacts.length}명 발송 완료 처리`}
             </button>
-            <button className={btn('gray')} onClick={()=>setSendNotice(null)}>취소</button>
+            <button className={btn('gray')} onClick={()=>setSendNotice(null)} disabled={noticeSending}>취소</button>
           </div>
         </div>
       </div>
@@ -12491,7 +12531,7 @@ function CalendarView({events,setEvents,consultations,makeups,notices,setNotices
 }
 
 // ── 보강 관리 ────────────────────────────────────────────────────────────
-function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,loggedInTeacherId,notifications,setNotifications,academyName}){
+function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,loggedInTeacherId,notifications,setNotifications,academyName,solapiConfig,sendSMSAuto}){
   const[modalOpen,setModalOpen]=useState(false);
   const[sendMakeupModal,setSendMakeupModal]=useState(null);
   const[editTarget,setEditTarget]=useState(null);
@@ -12816,11 +12856,21 @@ function MakeupManagement({makeups,setMakeups,students,classes,teachers,role,log
             {lastSent&&<div className="text-xs text-slate-400 text-center">마지막 발송: {new Date(lastSent.sentAt).toLocaleString('ko-KR')}</div>}
           </div>
           <div className="px-6 pb-5 flex gap-2">
-            <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={()=>{
-              copyToClipboard(smsText,'보강 알림 메시지가 복사됐습니다! 카카오톡 또는 문자에 붙여넣기 하세요.');
-              if(setNotifications)setNotifications(prev=>[...prev,{id:genId(),type:'makeup',studentId:m.studentId,studentName:m.studentName,makeupId:m.id,makeupDate:m.makeupDate,sentAt:new Date().toISOString(),channel:'manual'}]);
-              setSendMakeupModal(null);
-            }}>📋 복사하고 닫기</button>
+            {solapiConfig?.enabled&&solapiConfig?.apiKey?(
+              <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={async()=>{
+                const phone=student.grade==='성인'?student.phone:student.parentPhone;
+                if(!phone){alert('수신자 전화번호가 없습니다.');return;}
+                const r=await sendSMSAuto(phone,smsText,'notice');
+                if(r.ok){if(setNotifications)setNotifications(prev=>[...prev,{id:genId(),type:'makeup',studentId:m.studentId,studentName:m.studentName,makeupId:m.id,makeupDate:m.makeupDate,sentAt:new Date().toISOString(),channel:r.via||'sms'}]);setSendMakeupModal(null);alert(r.via==='alimtalk'?'✅ 카카오 알림톡 발송 완료!':'✅ SMS 발송 완료!');}
+                else alert('❌ 발송 실패: '+(r.reason||'오류'));
+              }}>{(solapiConfig?.kakaoEnabled&&solapiConfig?.kakaoChannelId&&solapiConfig?.kakaoTplNotice)?'💬 알림톡 자동 발송':'📱 SMS 자동 발송'}</button>
+            ):(
+              <button className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-all" onClick={()=>{
+                copyToClipboard(smsText,'보강 알림 메시지가 복사됐습니다! 카카오톡 또는 문자에 붙여넣기 하세요.');
+                if(setNotifications)setNotifications(prev=>[...prev,{id:genId(),type:'makeup',studentId:m.studentId,studentName:m.studentName,makeupId:m.id,makeupDate:m.makeupDate,sentAt:new Date().toISOString(),channel:'manual'}]);
+                setSendMakeupModal(null);
+              }}>📋 복사하고 닫기</button>
+            )}
             <button className="px-4 py-2.5 bg-gray-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-gray-200" onClick={()=>setSendMakeupModal(null)}>취소</button>
           </div>
         </div>
@@ -15014,13 +15064,13 @@ export default function App(){
         {page==='expense_submit'&&<ExpenseSubmit expenses={expenses} setExpenses={setExpenses} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='budget'&&<BudgetManagement income={income} setIncome={setIncome} expenses={expenses} setExpenses={setExpenses}/>}
         {page==='tuition'&&<TuitionManagement tuitions={tuitions} setTuitions={setTuitions} students={students} classes={classes} income={income} setIncome={setIncome} tuitionDaySetting={tuitionDaySetting} notifications={notifications} setNotifications={setNotifications} academyName={academyName} solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto}/>}
-        {page==='attendance'&&<AttendanceManagement attendance={attendance} setAttendance={setAttendance} teachers={teachers} students={students} classes={classes} attContext={attContext} clearAttContext={()=>setAttContext(null)} makeups={makeups} setMakeups={setMakeups} role={role} loggedInTeacherId={loggedInTeacherId}/>}
-        {page==='notices'&&<NoticeManagement notices={notices} setNotices={setNotices} students={students} classes={classes} academyName={academyName} baseUrl={baseUrl}/>}
+        {page==='attendance'&&<AttendanceManagement attendance={attendance} setAttendance={setAttendance} teachers={teachers} students={students} classes={classes} attContext={attContext} clearAttContext={()=>setAttContext(null)} makeups={makeups} setMakeups={setMakeups} role={role} loggedInTeacherId={loggedInTeacherId} academyName={academyName} solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto}/>}
+        {page==='notices'&&<NoticeManagement notices={notices} setNotices={setNotices} students={students} classes={classes} academyName={academyName} baseUrl={baseUrl} solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto}/>}
         {page==='videos'&&<VideoManagement videos={videos} setVideos={setVideos} students={students} teachers={teachers} academyName={academyName} baseUrl={baseUrl}/>}
         {page==='tax'&&<TaxManagement income={income} expenses={expenses}/>}
         {page==='consultation'&&<ConsultationManagement consultations={consultations} setConsultations={setConsultations} consultContext={consultContext} clearConsultContext={()=>setConsultContext(null)} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='calendar'&&<CalendarView events={events} setEvents={setEvents} consultations={consultations} makeups={makeups} notices={notices} setNotices={setNotices} role={role} loggedInTeacherId={loggedInTeacherId} students={students} classes={classes}/>}
-        {page==='makeup'&&<MakeupManagement makeups={makeups} setMakeups={setMakeups} students={students} classes={classes} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId} notifications={notifications} setNotifications={setNotifications} academyName={academyName}/>}
+        {page==='makeup'&&<MakeupManagement makeups={makeups} setMakeups={setMakeups} students={students} classes={classes} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId} notifications={notifications} setNotifications={setNotifications} academyName={academyName} solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto}/>}
         {page==='withdrawal'&&<StudentManagement students={students} setStudents={setStudents} classes={classes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} tuitions={tuitions} setTuitions={setTuitions} role={role} loggedInTeacherId={loggedInTeacherId} tuitionDaySetting={tuitionDaySetting} defaultTab="withdrawn"/>}
         {page==='payslip'&&<PayslipManagement teachers={teachers} academyName={academyName} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='achievement'&&<AchievementManagement achievements={achievements} setAchievements={setAchievements} students={students}/>}
