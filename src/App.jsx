@@ -10054,7 +10054,7 @@ function BudgetManagement({income,setIncome,expenses,setExpenses}){
 }
 
 // ── 학원비 관리 ───────────────────────────────────────────────────────────
-function TuitionManagement({tuitions,setTuitions,students,classes,income,setIncome,tuitionDaySetting,notifications,setNotifications,academyName}){
+function TuitionManagement({tuitions,setTuitions,students,classes,income,setIncome,tuitionDaySetting,notifications,setNotifications,academyName,solapiConfig,sendSMSAuto}){
   const[tab,setTab]=useState('monthly');
   const[sendModal,setSendModal]=useState(null); // 발송 미리보기 모달 (tuition record)
   // 이달 납부현황 안에서 "미납" / "납부완료"를 탭으로 나눠서 보여주기 위한 상태
@@ -15013,7 +15013,7 @@ export default function App(){
         {page==='students'&&<StudentManagement students={students} setStudents={setStudents} classes={classes} withdrawals={withdrawals} setWithdrawals={setWithdrawals} tuitions={tuitions} setTuitions={setTuitions} role={role} loggedInTeacherId={loggedInTeacherId} tuitionDaySetting={tuitionDaySetting}/>}
         {page==='expense_submit'&&<ExpenseSubmit expenses={expenses} setExpenses={setExpenses} teachers={teachers} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='budget'&&<BudgetManagement income={income} setIncome={setIncome} expenses={expenses} setExpenses={setExpenses}/>}
-        {page==='tuition'&&<TuitionManagement tuitions={tuitions} setTuitions={setTuitions} students={students} classes={classes} income={income} setIncome={setIncome} tuitionDaySetting={tuitionDaySetting} notifications={notifications} setNotifications={setNotifications} academyName={academyName}/>}
+        {page==='tuition'&&<TuitionManagement tuitions={tuitions} setTuitions={setTuitions} students={students} classes={classes} income={income} setIncome={setIncome} tuitionDaySetting={tuitionDaySetting} notifications={notifications} setNotifications={setNotifications} academyName={academyName} solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto}/>}
         {page==='attendance'&&<AttendanceManagement attendance={attendance} setAttendance={setAttendance} teachers={teachers} students={students} classes={classes} attContext={attContext} clearAttContext={()=>setAttContext(null)} makeups={makeups} setMakeups={setMakeups} role={role} loggedInTeacherId={loggedInTeacherId}/>}
         {page==='notices'&&<NoticeManagement notices={notices} setNotices={setNotices} students={students} classes={classes} academyName={academyName} baseUrl={baseUrl}/>}
         {page==='videos'&&<VideoManagement videos={videos} setVideos={setVideos} students={students} teachers={teachers} academyName={academyName} baseUrl={baseUrl}/>}
