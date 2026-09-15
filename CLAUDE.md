@@ -11,7 +11,7 @@ Cowork(Claude 데스크탑 앱)에서 수개월간 진행한 개발 이력이 �
 - **GitHub**: mtgaustin/piano-academy
 - **배포**: Vercel (GitHub push 시 자동 배포)
 - **DB**: Supabase (`src/supabase.js` — URL: `https://uzpduwajpybexzkcyzag.supabase.co`)
-- **주요 파일**: `src/App.jsx` (약 14,000+ 줄, 단일 파일 SPA)
+- **주요 파일**: `src/App.jsx` (약 15,000+ 줄, 단일 파일 SPA)
 - **로컬 개발**: `npm run dev` → localhost:5173 / `localhost:5173/?blank=true` → 데모 모드
 - **배포 스크립트**: `git_push.bat` (프로젝트 루트)
 
@@ -33,8 +33,8 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
 - **DB**: Supabase (PostgreSQL)
 - **Storage**: localStorage (`useLS` 훅, 키 suffix `6`: `hm_teachers6`, `hm_students6` 등)
 - **Auth**: Supabase Auth
-- **SMS/알림톡**: solapi (Vercel Serverless Function `api/send-sms.js` 경유)
 - **배포**: Vercel
+- **SMS/알림톡**: Solapi REST API (`api/send-sms.js` 서버리스 함수)
 
 ---
 
@@ -59,7 +59,7 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
 7. **예산 관리** — 수입/지출 등록, 월별 요약(최근 7개월), PDF 출력
 8. **상담 관리** — 신규/체험/등록/종료 상태
 9. **보충 수업** — 일정 및 사유
-10. **공지 관리** — 공지사항 작성
+10. **공지 관리** — 공지사항 작성 + SMS/알림톡 일괄 발송
 11. **레슨 영상** — 학생별 영상 링크
 12. **급여 명세서** — 4대보험 자동 계산 (국민연금 4.5%, 건강보험 3.545%, 고용보험 0.9%, 소득세)
 13. **성취도 관리** — 피아노 레벨/콩쿠르 수상
@@ -67,32 +67,91 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
 
 ---
 
-## SMS / 카카오 알림톡 발송 (2026-09 Phase3 추가, 09-15 최신화)
-
-솔라피(solapi) API를 통한 문자/카카오 알림톡 자동 발송 기능. 여러 섹션에 걸쳐 통합되어 있음.
-
-- **연동 구조**
-  - 백엔드: `api/send-sms.js` (Vercel Serverless Function) — `solapi` npm 패키지의 `SolapiMessageService` 사용
-  - 프론트: `App.jsx` 최상위에 정의된 공통 함수 `sendSMSAuto(toPhone, text, msgType)` (`msgType`: `'tuition'` | `'notice'`)
-    - 카카오 채널ID + 템플릿ID가 모두 설정된 경우 **알림톡 우선 시도** → 실패 시 자동으로 **SMS 폴백**
-    - 채널ID/템플릿ID 미설정 시 바로 SMS로 발송
-  - 설정값: `solapiConfig` (`useLS('hm_solapi_config6', ...)`) — `{ apiKey, apiSecret, fromPhone, enabled, kakaoChannelId, kakaoEnabled, kakaoTplTuition, kakaoTplNotice }`
-  - 설정 화면: `SettingsManagement` 내 "📱 SMS 알림 설정" 탭 — API 키/발신번호 등록, 테스트 발송, 카카오 알림톡 채널·템플릿 연결 가이드 제공
-- **발송 트리거 지점**
-  - **학원비 관리**: 납부 완료 처리 시 자동 발송 + 개별 건 "SMS/알림톡 자동 발송" 버튼
-  - **출결 관리**: 결석/지각/조퇴 처리 시 `window.confirm()`으로 발송 여부 확인 후 발송 (2026-09-15 결석 전용 → 지각/조퇴까지 확장), 일괄 휴강 처리 후에도 확인 팝업 거쳐 대상 학부모 전체 발송(보강 예정일 있으면 문구에 포함)
-  - **공지 관리**: 선택한 대상에게 일괄 발송
-  - **보충 수업(MakeupManagement)**: 보강 일정 안내 발송
-- API 키 미등록 시에도 각 화면에서 문자 내용을 클립보드로 복사해 수동 발송할 수 있는 대체 경로(`copyToClipboard`)는 항상 유지됨
-
----
-
-## 샘플 데이터 현황 (2026-06-26 기준, 2026-09까지 확장 완료)
+## 샘플 데이터 현황 (2026-09까지 확장 완료)
 
 - 강사: 5명 (t1~t5), 수업: 12개 반 (c1~c12), 학생: 150명
 - 출결: 7,893건 (2025-10 ~ 2026-09), 수강료: 735건, 수입: 106건, 지출: 126건
 - 매월 1일 09:00 KST에 자동으로 새달 데이터 생성하는 스케줄 작업 설정됨 (`piano-academy-monthly-sample-data`)
   - 2026-10-01부터 실제 생성 시작 (07~09월은 이미 채워져 있어 자동 건너뜀)
+
+---
+
+## Phase 3 진행 현황
+
+### 완료된 항목
+- **Phase 3-①** ✅ Supabase 로그인/회원가입 UI 구현
+- **Phase 3-②** ✅ SMS/알림톡 연동 — Solapi API 키 설정 + 실제 발송 구현
+
+### 미완료 항목 (순서대로 진행)
+- **Phase 3-③** 자동 청구 시스템 (월 수강료 자동 청구)
+- **Phase 3-④** 결제 연동
+- **Phase 3-⑤** 학부모 앱 등원 확인 → 자동 출결
+
+### ⚠️ 중요: 리팩토링 예정
+**Phase 3 전체 완료 후** App.jsx (15,000+ 줄)를 파일 분리 리팩토링 예정.
+Phase 3 진행 중에는 리팩토링하지 말 것 — 단일 파일 유지.
+
+---
+
+## SMS/알림톡 연동 (Solapi)
+
+### 구조
+- **API 서버**: `api/send-sms.js` (Vercel 서버리스 함수)
+- **핵심 함수**: `sendSMSAuto(phone, text, msgType)` — App.jsx 최상단에 정의
+- **발송 우선순위**: 카카오 알림톡(ATA) → 실패 시 SMS 자동 폴백
+
+### solapiConfig 구조 (localStorage에 저장)
+```js
+{
+  enabled: true/false,
+  apiKey: 'SOLAPI_API_KEY',
+  apiSecret: 'SOLAPI_SECRET',
+  fromPhone: '발신번호',
+  kakaoEnabled: true/false,       // 카카오 알림톡 사용 여부
+  kakaoChannelId: 'pfId',         // 카카오 채널 ID
+  kakaoTplTuition: 'templateId',  // 수강료 납부 확인 템플릿
+  kakaoTplNotice: 'templateId',   // 공지/보강/출결 알림 템플릿
+}
+```
+
+### SMS 발송 트리거 5곳 (모두 구현 완료)
+1. **공지사항** (NoticeManagement) — 선택된 학부모에게 일괄 발송
+2. **보강 확정** (MakeupManagement) — 보강 일정 확정 시 학부모 알림
+3. **출결** (AttendanceManagement) — 결석/지각/조퇴 시 `window.confirm()` 후 발송
+4. **일괄 휴강** (confirmBatchMakeup) — 휴강 처리 후 학부모 알림
+5. **수강료 납부 확인** (TuitionManagement) — 납부 처리 시 자동 발송
+
+### 컴포넌트 props 패턴
+SMS 기능이 있는 컴포넌트는 모두 `solapiConfig`와 `sendSMSAuto`를 props로 받음:
+```jsx
+<NoticeManagement solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto} ... />
+<MakeupManagement solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto} ... />
+<AttendanceManagement solapiConfig={solapiConfig} sendSMSAuto={sendSMSAuto} ... />
+```
+
+### 카카오 알림톡 설정 (미완료)
+카카오 알림톡을 실제로 사용하려면:
+1. 카카오 비즈니스 채널에서 `검색용 아이디` + `관리자 번호` 확보
+2. Solapi에서 카카오 채널 연동
+3. 템플릿 생성 및 카카오 승인 (1~2주 소요)
+4. 앱 설정 → SMS 알림 → 카카오 알림톡 탭에서 채널ID + 템플릿ID 입력
+
+---
+
+## Claude Code 사용법
+
+### VS Code에서 Remote Control 설정
+1. VS Code 터미널에서 `claude` 입력 → Claude Code 실행
+2. Claude Code 입력창에 `/remote-control` 입력 → "Enable Remote Control" 선택
+3. 모바일 claude.ai 앱 → Code 탭 → 해당 세션 연결
+
+### 모바일에서 연결하는 법
+- claude.ai 모바일 앱 → 왼쪽 메뉴 → `piano-academy` 프로젝트 → 활성 세션 선택
+- 또는 새로 생성 → 아래 "로컬" 버튼 → "원격 제어" 선택
+
+### ⚠️ 주의사항
+- Cowork(Claude 데스크탑)과 Claude Code가 동시에 같은 파일을 수정하면 충돌 발생
+- 한 번에 하나의 도구만 사용할 것
 
 ---
 
@@ -175,9 +234,6 @@ expenses[]:  { id, date, category, description, amount }
 2. `git_push.bat` 실행 → commit message 입력 → 자동으로 GitHub push
 3. Vercel이 자동 감지하여 배포 (~1-2분 소요)
 
-> **주의**: Cowork(Claude 데스크탑)과 Claude Code가 동시에 같은 파일을 수정하면 충돌 발생.
-> 한 번에 하나의 도구만 사용할 것.
-
 ---
 
 ## 파일 구조 참고
@@ -185,10 +241,10 @@ expenses[]:  { id, date, category, description, amount }
 ```
 piano-academy/
 ├── src/
-│   ├── App.jsx        ← 메인 코드 (14,000+ 줄, 단일 파일)
+│   ├── App.jsx        ← 메인 코드 (15,000+ 줄, 단일 파일)
 │   └── supabase.js    ← DB 연결 설정
 ├── api/
-│   └── send-sms.js    ← Vercel Serverless Function (솔라피 SMS/카카오 알림톡 발송)
+│   └── send-sms.js    ← Solapi SMS/알림톡 서버리스 함수
 ├── public/
 ├── CLAUDE.md          ← 이 파일
 ├── git_push.bat       ← 배포 스크립트
