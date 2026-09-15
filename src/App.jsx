@@ -10760,8 +10760,8 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
     ):{};
     if(existing)setAttendance(prev=>prev.map(a=>a.id===existing.id?{...a,status,note,...timeFields}:a));
     else setAttendance(prev=>[...prev,{id:genId(),date,type,refId,status,note,...(type==='student'?{classId}:{}),...timeFields}]);
-    // 결석 처리 시 학부모 SMS 자동 발송
-    if(type==='student'&&status==='absent'&&sendSMSAuto&&solapiConfig?.enabled&&solapiConfig?.apiKey){
+    // 결석/지각/조퇴 처리 시 학부모 SMS 발송 (확인 후)
+    if(type==='student'&&['absent','late','leave'].includes(status)&&sendSMSAuto&&solapiConfig?.enabled&&solapiConfig?.apiKey){
       const st=students.find(s=>s.id===refId);
       const cls=classes.find(c=>c.id===classId);
       if(st){
@@ -10769,8 +10769,11 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
         if(phone){
           const acName=academyName||'학원';
           const receiver=st.grade==='성인'?`${st.name}님`:`${st.parentName||'학부모'}님`;
-          const smsText=`[${acName}]\n안녕하세요 ${receiver},\n${st.name} 학생이 오늘(${date}) ${cls?cls.name+' 수업':''} 결석 처리되었습니다.\n문의사항은 학원으로 연락 주세요.`;
-          sendSMSAuto(phone,smsText,'notice');
+          const statusLabel={absent:'결석',late:'지각',leave:'조퇴'}[status];
+          const smsText=`[${acName}]\n안녕하세요 ${receiver},\n${st.name} 학생이 오늘(${date}) ${cls?cls.name+' 수업 ':''}${statusLabel} 처리되었습니다.\n문의사항은 학원으로 연락 주세요.`;
+          if(window.confirm(`📱 학부모에게 ${statusLabel} 알림을 발송하시겠습니까?\n\n수신자: ${phone}\n\n${smsText}`)){
+            sendSMSAuto(phone,smsText,'notice');
+          }
         }
       }
     }
@@ -10850,6 +10853,18 @@ function AttendanceManagement({attendance,setAttendance,teachers,students,classe
     setBatchMkModal(false);
     const skipped=batchMkStudents.length-selectedList.length;
     alert(`휴강 처리 및 보강 등록 완료!\n▪ 처리: ${selectedList.length}명${skipped>0?`\n▪ 제외: ${skipped}명 (출결 변경 없음)`:''}`);
+    // 일괄 휴강 후 학부모 SMS 발송 확인
+    if(sendSMSAuto&&solapiConfig?.enabled&&solapiConfig?.apiKey){
+      const smsTargets=selectedList.map(s=>{const phone=s.grade==='성인'?s.phone:s.parentPhone;return phone?{s,phone}:null;}).filter(Boolean);
+      if(smsTargets.length>0&&window.confirm(`📱 ${smsTargets.length}명 학부모에게 휴강 알림을 발송하시겠습니까?`)){
+        const acName=academyName||'학원';
+        for(const{s,phone}of smsTargets){
+          const receiver=s.grade==='성인'?`${s.name}님`:`${s.parentName||'학부모'}님`;
+          const smsText=`[${acName}]\n안녕하세요 ${receiver},\n${s.name} 학생의 ${batchMkCls.name} 수업(${date})이 휴강 처리되었습니다.${withSchedule&&batchMkForm.makeupDate?`\n보강 예정일: ${batchMkForm.makeupDate}`:'\n보강 일정은 추후 안내드리겠습니다.'}\n감사합니다 🙏`;
+          sendSMSAuto(phone,smsText,'notice');
+        }
+      }
+    }
   };
   // 반 구분은 더 이상 c1~c6로 하드코딩하지 않고, 실제 수업관리(classes)에 등록된 수업을 그대로 사용합니다.
   // → 나중에 수업관리에서 새 반을 추가/삭제해도 출결 화면에 자동으로 반영됩니다.
