@@ -82,14 +82,63 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
 - **Phase 3-①** ✅ Supabase 로그인/회원가입 UI 구현
 - **Phase 3-②** ✅ SMS/알림톡 연동 — Solapi API 키 설정 + 실제 발송 구현
 
+### 현재 진행 중
+- **Supabase 데이터 마이그레이션** — localStorage → Supabase 전환 (Phase 3-③ 선행 작업)
+  - ✅ **학생 관리** (`hm_students6` → `students` 테이블) — 2026-09-16 저장/수정 실사용 테스트 완료 (RLS 포함)
+
 ### 미완료 항목 (순서대로 진행)
-- **Phase 3-③** 자동 청구 시스템 (월 수강료 자동 청구)
-- **Phase 3-④** 결제 연동
+- **Phase 3-③** 자동 청구/알림 시스템
+  - 납부 예정일 7일 전 SMS 알림
+  - 납부 당일 SMS 알림
+  - 미납 시 SMS 알림
+  - Vercel Cron Job으로 매일 자동 실행
+- **Phase 3-④** 결제 연동 (원장님 구독료)
 - **Phase 3-⑤** 학부모 앱 등원 확인 → 자동 출결
 
 ### ⚠️ 중요: 리팩토링 예정
 **Phase 3 전체 완료 후** App.jsx (15,000+ 줄)를 파일 분리 리팩토링 예정.
 Phase 3 진행 중에는 리팩토링하지 말 것 — 단일 파일 유지.
+
+---
+
+## Supabase 마이그레이션 계획
+
+### 목적
+상용화를 위해 localStorage → Supabase로 전환. 이유:
+- 여러 기기에서 동일 데이터 접근
+- 서버사이드 자동 SMS 발송 가능 (Vercel Cron Job)
+- 학원별 데이터 완전 분리 (RLS)
+
+### 마이그레이션 순서
+1. ✅ **학생 관리** (`hm_students6` → Supabase `students` 테이블) — 완료 (2026-09-16)
+2. **강사 관리** (`hm_teachers6` → Supabase `teachers` 테이블) — 다음 차례
+3. **수업 관리** (`hm_classes6` → Supabase `classes` 테이블)
+4. **수강료** (`hm_tuitions6` → Supabase `tuitions` 테이블) — ⚠️ `is_prorated` 컬럼 누락 확인됨(아래 참고), 착수 시 바로 고칠 것
+5. **출결** (`hm_attendance6` → Supabase `attendance` 테이블)
+6. **예산** (`hm_income6`, `hm_expenses6` → Supabase 테이블)
+7. **나머지** (상담, 보강, 공지 등)
+
+### 작업 방식
+- 한 번에 전체 X → 섹션별로 하나씩 전환
+- 각 섹션 전환 후 테스트 → 다음 섹션
+- `supabase_create_tables.sql` 파일 참고 (최초 스키마)
+- RLS는 `RLS_설정.sql` 참고 — **academy_id는 `auth.uid()`를 직접 사용** (별도 `academies` 테이블 조회 안 함). `get_my_academy_id()` 함수가 `auth.uid()`를 그대로 반환하도록 되어 있고, App.jsx도 `setAcademyId(session.user.id)`로 로그인 유저 UID를 그대로 씀 — 둘이 반드시 일치해야 함
+
+### ⚠️ 섹션 전환 시 매번 확인할 것 (학생 관리에서 겪은 문제, 재발 방지용 체크리스트)
+과거에 Cowork가 `CREATE TABLE IF NOT EXISTS`로 실행하기 전에 일부 테이블(students 등)이 SQL로 미리 만들어져 있었던 이력이 있어서, 실제 DB 컬럼이 최신 스키마 파일과 다를 수 있음. 다음 섹션(강사/수업/수강료 등) 전환 시 반드시:
+1. 실제 저장/수정 폼(App.jsx의 `form` state, `openAdd`/`openEdit`/`save`)이 다루는 필드 전체를 SAMPLE 데이터 필드와 대조 — 두 세트가 다르면(레거시 필드 vs 신규 필드) DB에 양쪽 다 컬럼 있어야 함
+2. Supabase Table Editor 또는 SQL(`\d 테이블명` 대신 `SELECT column_name FROM information_schema.columns WHERE table_name='xxx'`)로 실제 컬럼 목록 확인 — 스키마 파일 믿지 말고 직접 확인
+3. `updated_at`/`created_at` 컬럼 실존 여부 확인 (트리거가 있는 테이블: teachers/classes/students/tuitions/consultations) — 없으면 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`
+4. 기존 행의 `academy_id`가 NULL인지 확인 (`SELECT count(*) FROM 테이블 WHERE academy_id IS NULL`) — 예전에 SQL로 직접 시드된 데이터는 NULL일 수 있고, NULL이면 RLS UPDATE가 막힘. NULL이면 현재 계정 UID로 채우기 (`UPDATE ... SET academy_id='<UID>' WHERE academy_id IS NULL`)
+5. 컬럼 없이 upsert하면 PostgREST가 **요청 전체를 거부**함 (부분 무시 안 됨) — 브라우저 콘솔의 `[Supabase] 저장 오류` 로그로 정확한 원인(누락 컬럼명 등)을 바로 확인 가능
+
+### 아직 테이블 없는 항목
+App.jsx의 `SUPABASE_TABLES` 매핑에는 14개 테이블이 있는데 `supabase_create_tables.sql`은 11개만 생성함 — `videos`, `events`, `withdrawals`, `achievements` 4개는 아직 Supabase에 테이블이 없음. 레슨영상/이벤트/퇴원/성취도 섹션 차례가 오면 CREATE TABLE부터 새로 추가해야 함.
+
+### 수강료 납부일 설정
+설정 → 수강료 납부기한에서 원장이 선택:
+- **등록일 기준**: 학생마다 등록일 기준 다음달 같은 날
+- **매달 고정일**: 모든 학생 동일 날짜
 
 ---
 
@@ -235,6 +284,9 @@ expenses[]:  { id, date, category, description, amount }
 3. Vercel이 자동 감지하여 배포 (~1-2분 소요)
 
 ---
+
+## Cowork 연결 확인
+- Cowork ↔ piano-academy 폴더 직접 연결 확인됨 (2026-09-16)
 
 ## 파일 구조 참고
 
