@@ -91,6 +91,11 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
   - ✅ **출결** (`hm_attendance6` → `attendance` 테이블) — 2026-09-16 출결 체크 실사용 테스트 완료
   - ✅ **예산 관리** (`hm_income6`/`hm_expenses6` → `income`/`expenses` 테이블) — 2026-09-16 수입/지출 등록 실사용 테스트 완료
   - ✅ **상담/보강/공지** (`consultations`/`makeups`/`notices` 테이블) — 2026-09-16 각각 등록 실사용 테스트 완료
+  - ✅ **학생피드백/학원캘린더/퇴원** (`videos`/`events`/`withdrawals` 테이블) — 2026-09-16 각각 등록 실사용 테스트 완료
+  - ✅ **성취도** (`achievements` 테이블) — 2026-09-16 테이블/RLS만 구축 (사이드바 메뉴 자체가 없어 UI 테스트는 생략, 향후 메뉴 추가 시 바로 사용 가능)
+
+### 🎉 Supabase 마이그레이션 전체 완료 (2026-09-16)
+SUPABASE_TABLES에 매핑된 14개 테이블 전부 생성/RLS/컬럼 보정 및 실사용 테스트(achievements 제외) 완료. localStorage → Supabase 전환 작업 종료.
 
 ### 미완료 항목 (순서대로 진행)
 - **Phase 3-③** 자동 청구/알림 시스템
@@ -123,9 +128,14 @@ Phase 3 진행 중에는 리팩토링하지 말 것 — 단일 파일 유지.
 5. ✅ **출결** (`hm_attendance6` → Supabase `attendance` 테이블) — 완료 (2026-09-16, `supabase_attendance_fix_columns.sql`로 arrival_time/departure_time 컬럼 추가)
 6. ✅ **예산** (`hm_income6`, `hm_expenses6` → Supabase 테이블) — 완료 (2026-09-16, `supabase_budget_fix_columns.sql`로 expenses.is_fixed/month, income.tuition_id/is_fixed 컬럼 추가 — BudgetManagement의 save()가 수입/지출 구분 없이 form 전체를 저장해서 isFixed가 income에도 필요했음, 주의)
 7. ✅ **상담/보강/공지** (`consultations`/`makeups`/`notices` 테이블) — 완료 (2026-09-16, `supabase_consult_makeup_notice_fix_columns.sql` + `supabase_notices_fix_columns2.sql`로 컬럼 대거 추가 — consultations: grade/interested_class/source/source_note/trial_date/register_date/assigned_teacher_id, makeups: student_name/class_name/absence_date/makeup_start_time/makeup_end_time/room, notices: date/category/target/important/poster_img/attachments/sent_contacts/sent_date)
+8. ✅ **학생피드백/학원캘린더/퇴원/성취도** (`videos`/`events`/`withdrawals`/`achievements` 테이블) — 완료 (2026-09-16, `supabase_videos_events_withdrawals_achievements.sql` + `supabase_videos_fix2.sql`)
+   - 이 4개 테이블은 예전에 다른 구조(academy_id가 UUID 아닌 TEXT)로 이미 만들어져 있었음 → RLS 정책은 `academy_id = auth.uid()::text`로 캐스팅
+   - videos: student_id/student_name/subject/title/date/file_path/`_file_name`/`_file_type`/description/teacher_comment/comment_date/comment_teacher/sent_to_parent/sent_date
+   - events: title/date/type/note(+memo 레거시), withdrawals/achievements는 기존 구조가 이미 앱 필드와 일치
+   - achievements는 사이드바 메뉴가 없어(`page==='achievement'` 라우트는 있으나 nav 항목 없음) UI 테스트 생략, 테이블/RLS만 준비됨
 
-### 남은 항목 (아직 Supabase 테이블 자체가 없음)
-`videos`, `events`, `withdrawals`, `achievements` — App.jsx의 `SUPABASE_TABLES` 매핑엔 있지만 `supabase_create_tables.sql`에 테이블 정의가 없음. 이 4개 섹션(레슨영상/학원캘린더 이벤트/퇴원/성취도) 착수 시 CREATE TABLE부터 새로 만들어야 함.
+### ✅ 전체 14개 테이블 마이그레이션 완료
+`SUPABASE_TABLES`에 매핑된 모든 테이블이 생성/RLS/컬럼 보정 완료됨. 앞으로 새 필드를 추가할 때는 이 문서의 "섹션 전환 시 매번 확인할 것" 체크리스트를 계속 적용할 것 (폼 필드 vs DB 컬럼 대조, academy_id NULL 확인 등).
 
 ### 작업 방식
 - 한 번에 전체 X → 섹션별로 하나씩 전환
