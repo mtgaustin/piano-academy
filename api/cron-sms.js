@@ -90,7 +90,8 @@ export default async function handler(req, res) {
   for (const row of settingsRows || []) {
     const cfg = row.value;
     const academyId = row.academy_id;
-    if (!cfg?.enabled || !cfg?.apiKey || !cfg?.apiSecret || !cfg?.fromPhone) continue;
+    // dryRun은 꺼져있어도(enabled:false) "만약 켜져있다면" 미리보기를 보여줌 — 실제 발송(dryRun 아님)만 활성화 여부를 엄격히 확인
+    if (!dryRun && (!cfg?.enabled || !cfg?.apiKey || !cfg?.apiSecret || !cfg?.fromPhone)) continue;
 
     const { data: tuitions, error: tErr } = await admin
       .from('tuitions').select('*').eq('academy_id', academyId).eq('status', 'unpaid');
@@ -116,7 +117,7 @@ export default async function handler(req, res) {
       const text = buildMessage(kind, academyName, student, t);
 
       if (dryRun) {
-        results.push({ academyId, studentId: t.student_id, studentName: student.name, kind, toPhone, text, dryRun: true });
+        results.push({ academyId, studentId: t.student_id, studentName: student.name, kind, toPhone, text, dryRun: true, currentlyEnabled: !!cfg?.enabled });
         continue;
       }
 
