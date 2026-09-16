@@ -90,6 +90,7 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
   - ✅ **수강료** (`hm_tuitions6` → `tuitions` 테이블) — 2026-09-16 납부완료 처리 실사용 테스트 완료
   - ✅ **출결** (`hm_attendance6` → `attendance` 테이블) — 2026-09-16 출결 체크 실사용 테스트 완료
   - ✅ **예산 관리** (`hm_income6`/`hm_expenses6` → `income`/`expenses` 테이블) — 2026-09-16 수입/지출 등록 실사용 테스트 완료
+  - ✅ **상담/보강/공지** (`consultations`/`makeups`/`notices` 테이블) — 2026-09-16 각각 등록 실사용 테스트 완료
 
 ### 미완료 항목 (순서대로 진행)
 - **Phase 3-③** 자동 청구/알림 시스템
@@ -121,7 +122,10 @@ Phase 3 진행 중에는 리팩토링하지 말 것 — 단일 파일 유지.
 4. ✅ **수강료** (`hm_tuitions6` → Supabase `tuitions` 테이블) — 완료 (2026-09-16, `supabase_tuitions_fix_columns.sql`로 student_name/is_prorated/base_fee/textbook_fee 컬럼 추가)
 5. ✅ **출결** (`hm_attendance6` → Supabase `attendance` 테이블) — 완료 (2026-09-16, `supabase_attendance_fix_columns.sql`로 arrival_time/departure_time 컬럼 추가)
 6. ✅ **예산** (`hm_income6`, `hm_expenses6` → Supabase 테이블) — 완료 (2026-09-16, `supabase_budget_fix_columns.sql`로 expenses.is_fixed/month, income.tuition_id/is_fixed 컬럼 추가 — BudgetManagement의 save()가 수입/지출 구분 없이 form 전체를 저장해서 isFixed가 income에도 필요했음, 주의)
-7. **나머지** (상담, 보강, 공지 등) — 다음 차례
+7. ✅ **상담/보강/공지** (`consultations`/`makeups`/`notices` 테이블) — 완료 (2026-09-16, `supabase_consult_makeup_notice_fix_columns.sql` + `supabase_notices_fix_columns2.sql`로 컬럼 대거 추가 — consultations: grade/interested_class/source/source_note/trial_date/register_date/assigned_teacher_id, makeups: student_name/class_name/absence_date/makeup_start_time/makeup_end_time/room, notices: date/category/target/important/poster_img/attachments/sent_contacts/sent_date)
+
+### 남은 항목 (아직 Supabase 테이블 자체가 없음)
+`videos`, `events`, `withdrawals`, `achievements` — App.jsx의 `SUPABASE_TABLES` 매핑엔 있지만 `supabase_create_tables.sql`에 테이블 정의가 없음. 이 4개 섹션(레슨영상/학원캘린더 이벤트/퇴원/성취도) 착수 시 CREATE TABLE부터 새로 만들어야 함.
 
 ### 작업 방식
 - 한 번에 전체 X → 섹션별로 하나씩 전환
