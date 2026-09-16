@@ -97,12 +97,17 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
 ### 🎉 Supabase 마이그레이션 전체 완료 (2026-09-16)
 SUPABASE_TABLES에 매핑된 14개 테이블 전부 생성/RLS/컬럼 보정 및 실사용 테스트(achievements 제외) 완료. localStorage → Supabase 전환 작업 종료.
 
+### ✅ Phase 3-③ 자동 청구/알림 시스템 (2026-09-16, 코드 완성 — ⚠️ 실제 발송은 꺼둔 상태)
+- `api/cron-sms.js`: Vercel Cron Job (매일 09:00 KST = `0 0 * * *` UTC), `vercel.json`에 등록
+  - 납부기한 D-7 / 당일 / 연체 시작(1회만) SMS·알림톡 자동 발송
+  - `SUPABASE_SERVICE_ROLE_KEY`(Vercel 환경변수)로 RLS 우회, 전체 학원 순회
+  - `CRON_SECRET`(Vercel 환경변수)으로 외부 무단 호출 방지
+  - `?dryRun=true&secret=<CRON_SECRET>` 쿼리로 실제 발송 없이 대상자 미리 확인 가능 (SMS 꺼져 있어도 미리보기는 됨)
+  - `tuitions.notified_d7`/`notified_dday`/`notified_overdue` 컬럼으로 중복 발송 방지
+- `src/supabase.js`의 `settingsSync`/`settingsLoad`: solapiConfig/academyName처럼 로컬에만 있던 설정을 Supabase `settings` 테이블(academy_id+key 유니크, RLS 적용됨)에 동기화 — 로그인 인증 완료(`supabaseSession`) 이후에 동기화해야 함 (타이밍 버그 한 번 겪음, App.jsx 참고)
+- **⚠️ 매우 중요 — 절대 실수로 켜지 말 것**: 2026-09-16 dryRun 테스트 결과 연체 대상 **92명**이 잡혔는데, 현재 학생 143명은 전부 **샘플/데모 데이터**라 전화번호도 실제 학부모가 아닌 랜덤 생성 번호임. 이 상태에서 SMS를 켜면 실제로 존재하는 무관한 사람에게 문자가 갈 위험이 있어 **의도적으로 "SMS 자동 발송 활성화" 체크를 꺼둔 채로 둠** (설정 → SMS 알림 설정에서 API Key/Secret/발신번호도 비워둔 상태). **실제 학생 데이터(진짜 학부모 연락처)로 전부 교체하기 전까지는 절대 이 기능을 켜지 말 것.** 켤 때는 사람이 명시적으로 판단해서 켜야 함 — Claude Code/Cowork가 임의로 켜면 안 됨.
+
 ### 미완료 항목 (순서대로 진행)
-- **Phase 3-③** 자동 청구/알림 시스템
-  - 납부 예정일 7일 전 SMS 알림
-  - 납부 당일 SMS 알림
-  - 미납 시 SMS 알림
-  - Vercel Cron Job으로 매일 자동 실행
 - **Phase 3-④** 결제 연동 (원장님 구독료)
 - **Phase 3-⑤** 학부모 앱 등원 확인 → 자동 출결
 
