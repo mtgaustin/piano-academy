@@ -89,6 +89,7 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
   - ✅ **수업 관리** (`hm_classes6` → `classes` 테이블) — 2026-09-16 저장/수정 실사용 테스트 완료
   - ✅ **수강료** (`hm_tuitions6` → `tuitions` 테이블) — 2026-09-16 납부완료 처리 실사용 테스트 완료
   - ✅ **출결** (`hm_attendance6` → `attendance` 테이블) — 2026-09-16 출결 체크 실사용 테스트 완료
+  - ✅ **예산 관리** (`hm_income6`/`hm_expenses6` → `income`/`expenses` 테이블) — 2026-09-16 수입/지출 등록 실사용 테스트 완료
 
 ### 미완료 항목 (순서대로 진행)
 - **Phase 3-③** 자동 청구/알림 시스템
@@ -119,8 +120,8 @@ Phase 3 진행 중에는 리팩토링하지 말 것 — 단일 파일 유지.
 3. ✅ **수업 관리** (`hm_classes6` → Supabase `classes` 테이블) — 완료 (2026-09-16, `supabase_classes_fix_columns.sql`로 close_date 컬럼 추가)
 4. ✅ **수강료** (`hm_tuitions6` → Supabase `tuitions` 테이블) — 완료 (2026-09-16, `supabase_tuitions_fix_columns.sql`로 student_name/is_prorated/base_fee/textbook_fee 컬럼 추가)
 5. ✅ **출결** (`hm_attendance6` → Supabase `attendance` 테이블) — 완료 (2026-09-16, `supabase_attendance_fix_columns.sql`로 arrival_time/departure_time 컬럼 추가)
-6. **예산** (`hm_income6`, `hm_expenses6` → Supabase 테이블) — 다음 차례
-7. **나머지** (상담, 보강, 공지 등)
+6. ✅ **예산** (`hm_income6`, `hm_expenses6` → Supabase 테이블) — 완료 (2026-09-16, `supabase_budget_fix_columns.sql`로 expenses.is_fixed/month, income.tuition_id/is_fixed 컬럼 추가 — BudgetManagement의 save()가 수입/지출 구분 없이 form 전체를 저장해서 isFixed가 income에도 필요했음, 주의)
+7. **나머지** (상담, 보강, 공지 등) — 다음 차례
 
 ### 작업 방식
 - 한 번에 전체 X → 섹션별로 하나씩 전환
