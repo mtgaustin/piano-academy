@@ -69,6 +69,30 @@ export async function dbSync(table,rows){
   }
 }
 
+// settings 테이블에 key-value 저장 (academy_id 자동 포함) — solapiConfig 등 서버(Cron Job)가 읽어야 하는 설정용
+export async function settingsSync(key,value){
+  if(!_academyId){console.warn('[Supabase] academyId 없음 - 설정 저장 스킵:',key);return;}
+  try{
+    const{error}=await supabase.from('settings').upsert({academy_id:_academyId,key,value},{onConflict:'academy_id,key'});
+    if(error)console.warn('[Supabase] 설정 저장 오류:',key,error.message);
+  }catch(e){
+    console.warn('[Supabase] settingsSync 실패:',key,e.message);
+  }
+}
+
+// settings 테이블에서 key-value 불러오기
+export async function settingsLoad(key){
+  if(!_academyId)return null;
+  try{
+    const{data,error}=await supabase.from('settings').select('value').eq('academy_id',_academyId).eq('key',key).maybeSingle();
+    if(error)throw error;
+    return data?.value??null;
+  }catch(e){
+    console.warn('[Supabase] settingsLoad 실패:',key,e.message);
+    return null;
+  }
+}
+
 // Supabase 테이블에서 데이터 불러오기 (해당 학원 데이터만)
 export async function dbLoad(table){
   if(!_academyId){console.warn('[Supabase] academyId 없음 - 로드 스킵:',table);return null;}

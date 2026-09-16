@@ -1,6 +1,6 @@
 import "./App.css";
 import React,{useState,useCallback,useRef,useEffect} from "react";
-import{supabase,dbSync,dbLoad,setAcademyId,authSignUp,authSignIn,authSignOut,authGetSession}from'./supabase.js';
+import{supabase,dbSync,dbLoad,setAcademyId,authSignUp,authSignIn,authSignOut,authGetSession,settingsSync}from'./supabase.js';
 const SUPABASE_TABLES={'hm_teachers6':'teachers','hm_classes6':'classes','hm_students6':'students','hm_income6':'income','hm_expenses6':'expenses','hm_attendance6':'attendance','hm_notices6':'notices','hm_videos6':'videos','hm_tuitions6':'tuitions','hm_consultations6':'consultations','hm_events6':'events','hm_makeups6':'makeups','hm_withdrawals6':'withdrawals','hm_achievements6':'achievements'};
 const isBlank=new URLSearchParams(window.location.search).get('blank')==='true';
 const BLANK_TYPE=new URLSearchParams(window.location.search).get('type')||'';
@@ -14820,6 +14820,10 @@ export default function App(){
   const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
   const[academyType,setAcademyType]=useLS('hm_academy_type','piano');
   const[solapiConfig,setSolapiConfig]=useLS('hm_solapi_config6',{apiKey:'',apiSecret:'',fromPhone:'',enabled:false,kakaoChannelId:'',kakaoEnabled:false,kakaoTplTuition:'',kakaoTplNotice:''});
+  // solapiConfig/academyName은 브라우저 localStorage에만 있으면 Cron Job(서버)이 못 읽으므로,
+  // 바뀔 때마다 Supabase settings 테이블에도 동기화 (자동 청구 알림 발송용)
+  useEffect(()=>{if(!isBlank)settingsSync('solapi_config',solapiConfig);},[solapiConfig]);
+  useEffect(()=>{if(!isBlank)settingsSync('academy_name',academyName);},[academyName]);
   // ── SMS/알림톡 자동 발송 (솔라피) ──────────────────────────────────────────────
   // msgType: 'tuition'(수강료) | 'notice'(일반공지/기타) — 알림톡 템플릿 선택에 사용
   const sendSMSAuto=async(toPhone,text,msgType='notice')=>{
