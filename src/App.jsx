@@ -14820,10 +14820,6 @@ export default function App(){
   const[typeConfigured,setTypeConfigured]=useLS('hm_type_configured',false);
   const[academyType,setAcademyType]=useLS('hm_academy_type','piano');
   const[solapiConfig,setSolapiConfig]=useLS('hm_solapi_config6',{apiKey:'',apiSecret:'',fromPhone:'',enabled:false,kakaoChannelId:'',kakaoEnabled:false,kakaoTplTuition:'',kakaoTplNotice:''});
-  // solapiConfig/academyName은 브라우저 localStorage에만 있으면 Cron Job(서버)이 못 읽으므로,
-  // 바뀔 때마다 Supabase settings 테이블에도 동기화 (자동 청구 알림 발송용)
-  useEffect(()=>{if(!isBlank)settingsSync('solapi_config',solapiConfig);},[solapiConfig]);
-  useEffect(()=>{if(!isBlank)settingsSync('academy_name',academyName);},[academyName]);
   // ── SMS/알림톡 자동 발송 (솔라피) ──────────────────────────────────────────────
   // msgType: 'tuition'(수강료) | 'notice'(일반공지/기타) — 알림톡 템플릿 선택에 사용
   const sendSMSAuto=async(toPhone,text,msgType='notice')=>{
@@ -14884,6 +14880,11 @@ export default function App(){
     });
     return()=>subscription.unsubscribe();
   },[]);
+  // solapiConfig/academyName은 브라우저 localStorage에만 있으면 Cron Job(서버)이 못 읽으므로,
+  // 로그인 인증이 끝난 뒤 Supabase settings 테이블에도 동기화 (자동 청구 알림 발송용).
+  // supabaseSession을 의존성에 넣어야 academyId가 세팅된 뒤에 확실히 실행됨.
+  useEffect(()=>{if(!isBlank&&supabaseSession)settingsSync('solapi_config',solapiConfig);},[solapiConfig,supabaseSession]);
+  useEffect(()=>{if(!isBlank&&supabaseSession)settingsSync('academy_name',academyName);},[academyName,supabaseSession]);
   // ── Supabase 초기 동기화 ───────────────────────────────────────────────────
   useEffect(()=>{
     if(isBlank){return;}
