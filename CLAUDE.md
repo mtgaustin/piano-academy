@@ -85,6 +85,7 @@ Austin은 스타트업 창업자이며 코딩 비전공자입니다.
 ### 현재 진행 중
 - **Supabase 데이터 마이그레이션** — localStorage → Supabase 전환 (Phase 3-③ 선행 작업)
   - ✅ **학생 관리** (`hm_students6` → `students` 테이블) — 2026-09-16 저장/수정 실사용 테스트 완료 (RLS 포함)
+  - ✅ **강사 관리** (`hm_teachers6` → `teachers` 테이블) — 2026-09-16 저장/수정 실사용 테스트 완료
 
 ### 미완료 항목 (순서대로 진행)
 - **Phase 3-③** 자동 청구/알림 시스템
@@ -111,8 +112,8 @@ Phase 3 진행 중에는 리팩토링하지 말 것 — 단일 파일 유지.
 
 ### 마이그레이션 순서
 1. ✅ **학생 관리** (`hm_students6` → Supabase `students` 테이블) — 완료 (2026-09-16)
-2. **강사 관리** (`hm_teachers6` → Supabase `teachers` 테이블) — 다음 차례
-3. **수업 관리** (`hm_classes6` → Supabase `classes` 테이블)
+2. ✅ **강사 관리** (`hm_teachers6` → Supabase `teachers` 테이블) — 완료 (2026-09-16, `supabase_teachers_fix_columns.sql`로 dependents/note/contract_end/employment_type/withholding_rate/children_age8to20/edu/resigned_*/inactive_*/login_id/login_pw 컬럼 추가)
+3. **수업 관리** (`hm_classes6` → Supabase `classes` 테이블) — 다음 차례
 4. **수강료** (`hm_tuitions6` → Supabase `tuitions` 테이블) — ⚠️ `is_prorated` 컬럼 누락 확인됨(아래 참고), 착수 시 바로 고칠 것
 5. **출결** (`hm_attendance6` → Supabase `attendance` 테이블)
 6. **예산** (`hm_income6`, `hm_expenses6` → Supabase 테이블)
